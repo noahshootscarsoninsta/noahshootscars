@@ -1,7 +1,7 @@
 backend:
-  name: git-gateway
+  name: github
+  repo: noahshootscarsoninsta/noahshootscars
   branch: main
-
 # This tells Decap CMS where uploaded photos get stored in the repo,
 # and what public URL path the live site should use to load them.
 media_folder: "images/uploads"
