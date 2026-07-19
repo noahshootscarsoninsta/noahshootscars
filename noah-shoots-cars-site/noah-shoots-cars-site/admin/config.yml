@@ -1,0 +1,65 @@
+backend:
+  name: git-gateway
+  branch: main
+
+# This tells Decap CMS where uploaded photos get stored in the repo,
+# and what public URL path the live site should use to load them.
+media_folder: "images/uploads"
+public_folder: "/images/uploads"
+
+publish_mode: simple
+
+collections:
+  - name: "hero"
+    label: "Home Page — Hero Photo"
+    description: "The big photo at the very top of the Home page."
+    files:
+      - file: "content/hero.json"
+        label: "Hero Photo"
+        name: "hero"
+        fields:
+          - { label: "Photo", name: "image", widget: "image", required: true }
+
+  - name: "featured"
+    label: "Home Page — Featured Work (4 photos)"
+    description: "The 4-photo grid on the Home page, under 'A few recent favorites'."
+    files:
+      - file: "content/featured.json"
+        label: "Featured Photos"
+        name: "featured"
+        fields:
+          - label: "Photos"
+            name: "photos"
+            widget: "list"
+            min: 1
+            max: 4
+            summary: "{{fields.caption}}"
+            fields:
+              - { label: "Photo", name: "image", widget: "image", required: true }
+              - { label: "Caption (optional)", name: "caption", widget: "string", required: false }
+
+  - name: "gallery"
+    label: "Portfolio Photos"
+    description: "Every photo shown on the Portfolio page. Add as many as you want, drag to reorder."
+    files:
+      - file: "content/gallery.json"
+        label: "Portfolio Photos"
+        name: "gallery"
+        fields:
+          - label: "Photos"
+            name: "photos"
+            widget: "list"
+            summary: "{{fields.caption}}"
+            fields:
+              - { label: "Photo", name: "image", widget: "image", required: true }
+              - { label: "Caption (optional)", name: "caption", widget: "string", required: false }
+
+  - name: "profile"
+    label: "Photographer Photo"
+    description: "Your photo, used on the Home page 'About' teaser and on the About page."
+    files:
+      - file: "content/profile.json"
+        label: "Photographer Photo"
+        name: "profile"
+        fields:
+          - { label: "Photo", name: "image", widget: "image", required: true }
