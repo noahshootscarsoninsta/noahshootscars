@@ -73,7 +73,7 @@ nav{
 
 /* real uploaded photo tile */
 .photo-tile{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);}
-.photo-tile img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-tile img{width:100%;height:100%;object-fit:cover;display:block;} .photo-tile-natural{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);} .photo-tile-natural img{width:100%;height:auto;display:block;}
 
 section{max-width:1180px;margin:0 auto;padding:70px 24px;}
 h1,h2,h3{margin:0 0 14px 0;line-height:1.2;}
@@ -164,8 +164,8 @@ footer{border-top:1px solid var(--border);padding:34px 24px;text-align:center;co
   .nav-links{
     position:absolute;top:100%;left:0;right:0;background:var(--bg-alt);
     flex-direction:column;align-items:stretch;padding:10px;border-bottom:1px solid var(--border);
-    display:none;gap:2px;
+    display:flex;gap:2px;opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .18s ease,transform .18s ease,visibility .18s;
   }
-  .nav-links.open{display:flex;}
+  .nav-links.open{opacity:1;visibility:visible;transform:translateY(0);}
   .hamburger{display:flex;}
 }
