@@ -35,6 +35,7 @@ exports.handler = async (event) => {
     clientName: gallery.clientName,
     description: gallery.description || '',
     price: gallery.price || '',
+    package: gallery.package || null,
     paymentInstructions: gallery.paymentInstructions || '',
     paid: !!gallery.paid,
     canDownload,
