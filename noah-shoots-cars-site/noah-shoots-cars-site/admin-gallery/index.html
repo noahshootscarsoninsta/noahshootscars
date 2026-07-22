@@ -13,7 +13,7 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
   label{display:block;font-size:13px;color:var(--text-dim);margin:14px 0 6px;}
   label:first-child{margin-top:0;}
-  input[type=text],input[type=password],input[type=number],input[type=date],textarea{
+  input[type=text],input[type=password],input[type=number],input[type=date],textarea,select{
     width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:7px;
     color:var(--text);padding:10px 12px;font-size:14.5px;font-family:inherit;
   }
@@ -78,8 +78,8 @@
       </div>
       <div class="row">
         <div>
-          <label>Package price (shown to client)</label>
-          <input type="text" id="newPrice" placeholder="e.g. $80">
+          <label>Package</label>
+          <select id="newPackage"></select>
         </div>
         <div>
           <label>Custom link ending (optional)</label>
@@ -92,6 +92,9 @@
       <textarea id="newDesc" placeholder="e.g. Photos from your shoot at Cars &amp; Coffee, June 2026"></textarea>
       <label>Expires (optional)</label>
       <input type="date" id="newExpires">
+      <label>Photos (optional — add them now or after creating)</label>
+      <input type="file" id="newPhotos" accept="image/*" multiple>
+      <div class="hint">Each photo you pick here is uploaded once and automatically turned into both a watermarked preview and a full-quality final — no need to select the same files twice.</div>
       <div style="margin-top:16px;"><button class="primary" id="createBtn">Create gallery</button></div>
       <div class="msg" id="createMsg"></div>
     </div>
@@ -105,6 +108,32 @@
 
 <script>
 let ADMIN_KEY = '';
+
+// Canonical package list -- also enforced server-side, this copy is just
+// for building the dropdowns and showing friendly labels.
+const PACKAGES = [
+  { id: 'car-50', category: 'Car Photography', price: '$50', editedCount: 5, chooseCount: null, label: 'Car — $50 (5 edited photos)' },
+  { id: 'car-65', category: 'Car Photography', price: '$65', editedCount: 10, chooseCount: 5, label: 'Car — $65 (edit 10, choose 5 as finals)' },
+  { id: 'car-80', category: 'Car Photography', price: '$80', editedCount: 10, chooseCount: null, label: 'Car — $80, Most Popular (10 edited photos)' },
+  { id: 'car-100', category: 'Car Photography', price: '$100', editedCount: 15, chooseCount: 10, label: 'Car — $100 (edit 15, choose 10 as finals)' },
+  { id: 'action-75', category: 'Action Photography', price: '$75', editedCount: 5, chooseCount: null, label: 'Action — $75 (5 edited photos)' },
+  { id: 'action-120', category: 'Action Photography', price: '$120', editedCount: 10, chooseCount: null, label: 'Action — $120, Most Popular (10 edited photos)' },
+  { id: 'action-160', category: 'Action Photography', price: '$160', editedCount: 15, chooseCount: null, label: 'Action — $160 (15 edited photos)' }
+];
+
+function packageSelectHtml(selectedId){
+  const groups = {};
+  PACKAGES.forEach(p => { (groups[p.category] = groups[p.category] || []).push(p); });
+  let html = '<option value="">No package / custom</option>';
+  Object.keys(groups).forEach(cat => {
+    html += '<optgroup label="' + cat + '">';
+    groups[cat].forEach(p => {
+      html += '<option value="' + p.id + '"' + (p.id === selectedId ? ' selected' : '') + '>' + p.label + '</option>';
+    });
+    html += '</optgroup>';
+  });
+  return html;
+}
 
 function el(id){ return document.getElementById(id); }
 function setMsg(id, text, ok){
@@ -145,15 +174,15 @@ function processImage(file, { maxDim, quality, watermark }){
         ctx.drawImage(img, 0, 0, w, h);
         if (watermark) {
           ctx.save();
-          ctx.globalAlpha = 0.22;
+          ctx.globalAlpha = 0.25;
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold ' + Math.round(w / 14) + 'px sans-serif';
+          ctx.font = 'bold ' + Math.round(w / 11) + 'px sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.translate(w / 2, h / 2);
           ctx.rotate(-Math.PI / 8);
-          const text = 'NOAH SHOOTS CARS • PREVIEW';
-          for (let y = -h; y < h; y += Math.round(w / 6)) {
+          const text = '@noahshootscars_';
+          for (let y = -h * 1.3; y < h * 1.3; y += Math.round(w / 7)) {
             ctx.fillText(text, 0, y);
           }
           ctx.restore();
@@ -166,18 +195,32 @@ function processImage(file, { maxDim, quality, watermark }){
   });
 }
 
-async function uploadFiles(slug, set, files){
-  const opts = set === 'preview'
-    ? { maxDim: 1600, quality: 0.65, watermark: true }
-    : { maxDim: 3000, quality: 0.9, watermark: false };
+// Upload each selected file exactly once, generating BOTH a watermarked
+// preview and a clean full-quality final from that same file -- the
+// photographer never has to pick the same photos twice.
+async function uploadFilesBoth(slug, files, onProgress){
+  let done = 0;
   for (const file of files) {
-    const dataUrl = await processImage(file, opts);
-    await api('uploadImage', { slug, set, filename: file.name, dataUrl });
+    const [previewUrl, finalUrl] = await Promise.all([
+      processImage(file, { maxDim: 1600, quality: 0.65, watermark: true }),
+      processImage(file, { maxDim: 3000, quality: 0.9, watermark: false })
+    ]);
+    await api('uploadImage', { slug, set: 'preview', filename: file.name, dataUrl: previewUrl });
+    await api('uploadImage', { slug, set: 'final', filename: file.name, dataUrl: finalUrl });
+    done++;
+    if (onProgress) onProgress(done, files.length);
   }
 }
 
 function galleryLink(slug){
   return location.origin + '/client/' + slug + '/';
+}
+
+function packageSummary(pkg){
+  if (!pkg) return '';
+  return pkg.chooseCount
+    ? (pkg.price + ' — edit ' + pkg.editedCount + ', client chooses ' + pkg.chooseCount + ' as finals')
+    : (pkg.price + ' — ' + pkg.editedCount + ' edited photos, all delivered');
 }
 
 function renderGallery(g){
@@ -191,7 +234,7 @@ function renderGallery(g){
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
         <strong>${g.clientName}</strong> ${badges}
-        <div class="hint">${g.price || 'no price set'} ${g.expiresAt ? ' · expires ' + g.expiresAt : ''}</div>
+        <div class="hint">${packageSummary(g.package) || (g.price || 'no package set')} ${g.expiresAt ? ' · expires ' + g.expiresAt : ''}</div>
       </div>
     </div>
     <div class="link-box">
@@ -205,19 +248,15 @@ function renderGallery(g){
       <button class="danger deleteBtn">Delete gallery</button>
     </div>
     <details>
-      <summary>Preview photos (${(g.previewImages||[]).length}) — watermarked, shown before payment</summary>
-      <input type="file" class="previewInput" accept="image/*" multiple style="margin-top:10px;">
+      <summary>Add photos (${(g.previewImages||[]).length} uploaded) — one upload makes a watermarked preview + full-quality final</summary>
+      <input type="file" class="bothInput" accept="image/*" multiple style="margin-top:10px;">
+      <div class="hint">Preview thumbnails below; the matching final photo is created automatically from the same file.</div>
       <div class="thumbs previewThumbs"></div>
-    </details>
-    <details>
-      <summary>Final photos (${(g.finalImages||[]).length}) — full quality, unlocked after payment</summary>
-      <input type="file" class="finalInput" accept="image/*" multiple style="margin-top:10px;">
-      <div class="thumbs finalThumbs"></div>
     </details>
     <details>
       <summary>Edit details / reset access code</summary>
       <label>Client name</label><input type="text" class="editName" value="${g.clientName || ''}">
-      <label>Price</label><input type="text" class="editPrice" value="${g.price || ''}">
+      <label>Package</label><select class="editPackage"></select>
       <label>Payment instructions</label><textarea class="editPayment">${g.paymentInstructions || ''}</textarea>
       <label>Description</label><textarea class="editDesc">${g.description || ''}</textarea>
       <label>New access code (leave blank to keep current)</label><input type="text" class="editCode" placeholder="only fill in to change it">
@@ -225,6 +264,8 @@ function renderGallery(g){
     </details>
     <div class="msg itemMsg"></div>
   `;
+
+  div.querySelector('.editPackage').innerHTML = packageSelectHtml(g.package && g.package.id);
 
   const msg = (t, ok) => { const m = div.querySelector('.itemMsg'); m.textContent = t; m.className = 'msg itemMsg ' + (ok?'ok':'error'); };
 
@@ -249,7 +290,7 @@ function renderGallery(g){
       await api('update', {
         slug: g.slug,
         clientName: div.querySelector('.editName').value,
-        price: div.querySelector('.editPrice').value,
+        packageId: div.querySelector('.editPackage').value || null,
         paymentInstructions: div.querySelector('.editPayment').value,
         description: div.querySelector('.editDesc').value,
         code: div.querySelector('.editCode').value || undefined
@@ -258,17 +299,14 @@ function renderGallery(g){
       loadGalleries();
     } catch(e){ msg(e.message); }
   };
-  div.querySelector('.previewInput').onchange = async (e) => {
+  div.querySelector('.bothInput').onchange = async (e) => {
     if (!e.target.files.length) return;
-    msg('Uploading…', true);
-    try { await uploadFiles(g.slug, 'preview', e.target.files); msg('Uploaded.', true); loadGalleries(); }
-    catch(err){ msg(err.message); }
-  };
-  div.querySelector('.finalInput').onchange = async (e) => {
-    if (!e.target.files.length) return;
-    msg('Uploading…', true);
-    try { await uploadFiles(g.slug, 'final', e.target.files); msg('Uploaded.', true); loadGalleries(); }
-    catch(err){ msg(err.message); }
+    const files = e.target.files;
+    try {
+      await uploadFilesBoth(g.slug, files, (done, total) => msg('Uploading ' + done + '/' + total + '…', true));
+      msg('Uploaded.', true);
+      loadGalleries();
+    } catch(err){ msg(err.message); }
   };
 
   const pThumbs = div.querySelector('.previewThumbs');
@@ -280,18 +318,13 @@ function renderGallery(g){
       .then(d => { imgEl.src = d.dataUrl; })
       .catch(() => { imgEl.replaceWith(document.createTextNode(img.filename)); });
     t.querySelector('button').onclick = async () => {
-      try { await api('deleteImage', { slug: g.slug, set: 'preview', filename: img.filename }); loadGalleries(); } catch(e){ msg(e.message); }
+      try {
+        await api('deleteImage', { slug: g.slug, set: 'preview', filename: img.filename });
+        await api('deleteImage', { slug: g.slug, set: 'final', filename: img.filename });
+        loadGalleries();
+      } catch(e){ msg(e.message); }
     };
     pThumbs.appendChild(t);
-  });
-  const fThumbs = div.querySelector('.finalThumbs');
-  (g.finalImages||[]).forEach(img => {
-    const t = document.createElement('div'); t.className = 't';
-    t.innerHTML = `<span style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--text-dim);padding:4px;text-align:center;">${img.filename}</span><button>x</button>`;
-    t.querySelector('button').onclick = async () => {
-      try { await api('deleteImage', { slug: g.slug, set: 'final', filename: img.filename }); loadGalleries(); } catch(e){ msg(e.message); }
-    };
-    fThumbs.appendChild(t);
   });
 
   return div;
@@ -331,22 +364,32 @@ el('createBtn').onclick = async () => {
   const code = el('newCode').value.trim();
   if (!clientName || !code) { setMsg('createMsg', 'Client name and access code are required.'); return; }
   try {
-    await api('create', {
+    const { gallery } = await api('create', {
       clientName, code,
-      price: el('newPrice').value.trim(),
+      packageId: el('newPackage').value || null,
       slug: el('newSlug').value.trim(),
       paymentInstructions: el('newPayment').value.trim(),
       description: el('newDesc').value.trim(),
       expiresAt: el('newExpires').value || null
     });
+
+    const files = el('newPhotos').files;
+    if (files && files.length) {
+      setMsg('createMsg', 'Gallery created — uploading photos…', true);
+      await uploadFilesBoth(gallery.slug, files, (done, total) => setMsg('createMsg', 'Uploading ' + done + '/' + total + '…', true));
+    }
+
     setMsg('createMsg', 'Gallery created.', true);
-    el('newClientName').value = ''; el('newCode').value = ''; el('newPrice').value = '';
+    el('newClientName').value = ''; el('newCode').value = ''; el('newPackage').value = '';
     el('newSlug').value = ''; el('newPayment').value = ''; el('newDesc').value = ''; el('newExpires').value = '';
+    el('newPhotos').value = '';
     loadGalleries();
   } catch (e) {
     setMsg('createMsg', e.message);
   }
 };
+
+el('newPackage').innerHTML = packageSelectHtml();
 
 // Restore a previously-entered key for this browser tab session only.
 const savedKey = sessionStorage.getItem('gallery_admin_key');
