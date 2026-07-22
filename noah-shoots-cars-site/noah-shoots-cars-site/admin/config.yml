@@ -2,9 +2,15 @@ backend:
   name: github
   repo: noahshootscarsoninsta/noahshootscars
   branch: main
+
 # This tells Decap CMS where uploaded photos get stored in the repo,
 # and what public URL path the live site should use to load them.
-media_folder: "images/uploads"
+# NOTE: this path is relative to the REPO ROOT, not to this config file --
+# because the published site actually lives one folder deeper
+# (noah-shoots-cars-site/noah-shoots-cars-site/), the folder name has to be
+# spelled out here too, or uploads land one level too high and don't show
+# up on the live site.
+media_folder: "noah-shoots-cars-site/noah-shoots-cars-site/images/uploads"
 public_folder: "/images/uploads"
 
 publish_mode: simple
@@ -63,3 +69,32 @@ collections:
         name: "profile"
         fields:
           - { label: "Photo", name: "image", widget: "image", required: true }
+
+  - name: "shows"
+    label: "Upcoming Shows"
+    description: "Car shows, meets, and events for the Upcoming Shows page. Add, edit, reorder, or remove as many as you want."
+    files:
+      - file: "content/shows.json"
+        label: "Shows"
+        name: "shows"
+        fields:
+          - label: "Shows"
+            name: "shows"
+            widget: "list"
+            summary: "{{fields.title}} — {{fields.date}}"
+            fields:
+              - { label: "Event name", name: "title", widget: "string", required: true }
+              - { label: "Date", name: "date", widget: "date", required: true, format: "YYYY-MM-DD" }
+              - { label: "Start time", name: "startTime", widget: "string", required: false, hint: "e.g. 10:00 AM" }
+              - { label: "End time", name: "endTime", widget: "string", required: false, hint: "e.g. 2:00 PM" }
+              - { label: "Location / venue name", name: "location", widget: "string", required: true }
+              - { label: "Address", name: "address", widget: "string", required: false }
+              - { label: "Short description", name: "description", widget: "text", required: false }
+              - { label: "Event photo (optional)", name: "image", widget: "image", required: false }
+              - { label: "Instagram or event link (optional)", name: "link", widget: "string", required: false }
+              - label: "Status"
+                name: "status"
+                widget: "select"
+                required: true
+                default: "I'll be there"
+                options: ["I'll be there", "Maybe", "Completed"]
