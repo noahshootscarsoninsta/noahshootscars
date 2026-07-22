@@ -235,6 +235,7 @@ function renderGallery(g){
       <div>
         <strong>${g.clientName}</strong> ${badges}
         <div class="hint">${packageSummary(g.package) || (g.price || 'no package set')} ${g.expiresAt ? ' · expires ' + g.expiresAt : ''}</div>
+        ${g.package && g.package.chooseCount ? `<div class="hint">${(g.selectedFilenames||[]).length ? 'Client picked ' + g.selectedFilenames.length + '/' + g.package.chooseCount + ' favorites' : 'Client hasn\'t picked their ' + g.package.chooseCount + ' favorites yet'}${(g.selectedFilenames||[]).length ? ' <button class="clearSelectionBtn">Clear selection</button>' : ''}</div>` : ''}
       </div>
     </div>
     <div class="link-box">
@@ -308,11 +309,20 @@ function renderGallery(g){
       loadGalleries();
     } catch(err){ msg(err.message); }
   };
+  const clearSelectionBtn = div.querySelector('.clearSelectionBtn');
+  if (clearSelectionBtn) {
+    clearSelectionBtn.onclick = async (ev) => {
+      ev.preventDefault();
+      try { await api('update', { slug: g.slug, clearSelection: true }); loadGalleries(); } catch(e){ msg(e.message); }
+    };
+  }
 
+  const selectedSet = new Set(g.selectedFilenames||[]);
   const pThumbs = div.querySelector('.previewThumbs');
   (g.previewImages||[]).forEach(img => {
     const t = document.createElement('div'); t.className = 't';
     t.innerHTML = `<img alt="" style="background:var(--bg-alt);"><button>x</button>`;
+    if (selectedSet.has(img.filename)) t.style.outline = '2px solid var(--accent)';
     const imgEl = t.querySelector('img');
     api('getImage', { slug: g.slug, set: 'preview', filename: img.filename })
       .then(d => { imgEl.src = d.dataUrl; })
