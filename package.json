@@ -1,0 +1,8 @@
+{
+    "name": "noahshootscars-functions",
+    "private": true,
+    "description": "Serverless functions for the private client gallery system. Not part of the published static site.",
+    "dependencies": {
+          "@netlify/blobs": "^8.1.0"
+    }
+}
