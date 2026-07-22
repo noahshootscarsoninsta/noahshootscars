@@ -9,6 +9,22 @@ const { checkAdminKey, hashCode, makeSalt, json, blobStore } = require('./_share
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
+// Canonical package list -- kept server-side so a client can only ever
+// attach a real, priced package to a gallery (never an arbitrary made-up
+// price/photo-count combo). Mirrors the Pricing page.
+const PACKAGES = [
+  { id: 'car-50', category: 'Car Photography', price: '$50', editedCount: 5, chooseCount: null, label: 'Car — $50 (5 edited photos)' },
+  { id: 'car-65', category: 'Car Photography', price: '$65', editedCount: 10, chooseCount: 5, label: 'Car — $65 (edit 10, choose 5 as finals)' },
+  { id: 'car-80', category: 'Car Photography', price: '$80', editedCount: 10, chooseCount: null, label: 'Car — $80, Most Popular (10 edited photos)' },
+  { id: 'car-100', category: 'Car Photography', price: '$100', editedCount: 15, chooseCount: 10, label: 'Car — $100 (edit 15, choose 10 as finals)' },
+  { id: 'action-75', category: 'Action Photography', price: '$75', editedCount: 5, chooseCount: null, label: 'Action — $75 (5 edited photos)' },
+  { id: 'action-120', category: 'Action Photography', price: '$120', editedCount: 10, chooseCount: null, label: 'Action — $120, Most Popular (10 edited photos)' },
+  { id: 'action-160', category: 'Action Photography', price: '$160', editedCount: 15, chooseCount: null, label: 'Action — $160 (15 edited photos)' }
+];
+function findPackage(id) {
+  return PACKAGES.find(p => p.id === id) || null;
+}
+
 function slugify(name) {
   const base = String(name || 'client')
     .toLowerCase()
@@ -41,6 +57,10 @@ exports.handler = async (event) => {
   const imgStore = blobStore('gallery-images');
   const action = body.action;
 
+  if (action === 'packages') {
+    return json(200, { packages: PACKAGES });
+  }
+
   if (action === 'list') {
     const { blobs } = await store.list({ prefix: 'gallery:' });
     const galleries = [];
@@ -71,6 +91,8 @@ exports.handler = async (event) => {
     if (!clientName || !code) return json(400, { error: 'Client name and access code are required' });
     if (code.length < 4) return json(400, { error: 'Access code should be at least 4 characters' });
 
+    const pkg = findPackage(body.packageId);
+
     let slug = String(body.slug || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/(^-|-$)/g, '');
     if (!slug) slug = slugify(clientName);
     const existing = await store.get('gallery:' + slug, { type: 'json' });
@@ -82,7 +104,8 @@ exports.handler = async (event) => {
       clientName,
       createdAt: new Date().toISOString(),
       description: body.description || '',
-      price: body.price || '',
+      package: pkg,
+      price: pkg ? pkg.price : (body.price || ''),
       paymentInstructions: body.paymentInstructions || '',
       paid: false,
       downloadsLocked: true,
@@ -106,7 +129,13 @@ exports.handler = async (event) => {
   if (action === 'update') {
     if (body.clientName !== undefined) gallery.clientName = body.clientName;
     if (body.description !== undefined) gallery.description = body.description;
-    if (body.price !== undefined) gallery.price = body.price;
+    if (body.packageId !== undefined) {
+      const pkg = findPackage(body.packageId);
+      gallery.package = pkg;
+      if (pkg) gallery.price = pkg.price;
+    } else if (body.price !== undefined) {
+      gallery.price = body.price;
+    }
     if (body.paymentInstructions !== undefined) gallery.paymentInstructions = body.paymentInstructions;
     if (body.expiresAt !== undefined) gallery.expiresAt = body.expiresAt;
     if (body.code) {
