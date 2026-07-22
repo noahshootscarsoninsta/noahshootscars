@@ -154,9 +154,8 @@ async function api(action, payload){
 }
 
 // Resize + optionally watermark an image file in-browser via canvas before
-// upload. Preview photos get watermarked and capped smaller; final photos
-// are capped larger (no watermark) but still resized so uploads stay
-// reliably under the function payload limit.
+// upload. Used for previews (always) and, as a fallback, for finals that are
+// too large to upload untouched -- see buildFinalDataUrl() below.
 function processImage(file, { maxDim, quality, watermark }){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -195,15 +194,54 @@ function processImage(file, { maxDim, quality, watermark }){
   });
 }
 
+// Reads a file exactly as-is (no resize, no recompression) as a data URL.
+function fileToDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Netlify Functions cap the combined request+response payload at 6MB, and
+// base64 inflates a file by about a third, so a final photo has to stay
+// under roughly that once encoded. Most camera/phone photos are already
+// well under this, so we upload those completely untouched -- byte-for-byte
+// the same file the photographer selected, at full resolution and quality.
+// Only a genuinely large original gets recompressed, and even then we start
+// as close to full size/quality as will fit and only step down as needed.
+const FINAL_RAW_LIMIT = 3.5 * 1024 * 1024; // upload untouched if the file is at or under this
+const FINAL_BASE64_BUDGET = 4.8 * 1024 * 1024; // target ceiling for the encoded final, safely under the 6MB cap
+const FINAL_FALLBACK_STEPS = [
+  { maxDim: 4500, quality: 0.95 },
+  { maxDim: 4000, quality: 0.9 },
+  { maxDim: 3200, quality: 0.85 },
+  { maxDim: 2400, quality: 0.8 }
+];
+
+async function buildFinalDataUrl(file){
+  if (file.size <= FINAL_RAW_LIMIT) {
+    return fileToDataUrl(file);
+  }
+  let last = null;
+  for (const step of FINAL_FALLBACK_STEPS) {
+    last = await processImage(file, { maxDim: step.maxDim, quality: step.quality, watermark: false });
+    if (last.length <= FINAL_BASE64_BUDGET) return last;
+  }
+  return last;
+}
+
 // Upload each selected file exactly once, generating BOTH a watermarked
-// preview and a clean full-quality final from that same file -- the
-// photographer never has to pick the same photos twice.
+// preview and a final from that same file -- the photographer never has to
+// pick the same photos twice. The final is the original file whenever it's
+// small enough to fit the upload limit (see buildFinalDataUrl above).
 async function uploadFilesBoth(slug, files, onProgress){
   let done = 0;
   for (const file of files) {
     const [previewUrl, finalUrl] = await Promise.all([
       processImage(file, { maxDim: 1600, quality: 0.65, watermark: true }),
-      processImage(file, { maxDim: 3000, quality: 0.9, watermark: false })
+      buildFinalDataUrl(file)
     ]);
     await api('uploadImage', { slug, set: 'preview', filename: file.name, dataUrl: previewUrl });
     await api('uploadImage', { slug, set: 'final', filename: file.name, dataUrl: finalUrl });
@@ -214,6 +252,13 @@ async function uploadFilesBoth(slug, files, onProgress){
 
 function galleryLink(slug){
   return location.origin + '/client/' + slug + '/';
+}
+
+// Default payment-instructions text for a package, so creating a gallery
+// only ever needs the dollar amount double-checked, not retyped.
+function paymentTemplate(pkg){
+  if (!pkg) return '';
+  return 'Send ' + pkg.price + ' via Venmo/Cashapp, once I verify the payment, I will unlock the final photos.';
 }
 
 function packageSummary(pkg){
@@ -393,6 +438,7 @@ el('createBtn').onclick = async () => {
     el('newClientName').value = ''; el('newCode').value = ''; el('newPackage').value = '';
     el('newSlug').value = ''; el('newPayment').value = ''; el('newDesc').value = ''; el('newExpires').value = '';
     el('newPhotos').value = '';
+    newPaymentAuto = true;
     loadGalleries();
   } catch (e) {
     setMsg('createMsg', e.message);
@@ -400,6 +446,19 @@ el('createBtn').onclick = async () => {
 };
 
 el('newPackage').innerHTML = packageSelectHtml();
+
+// Auto-fill the payment instructions box with a template based on the
+// chosen package's price, so normally all that's left to check is the
+// dollar amount. If the photographer edits the box by hand, we stop
+// overwriting it -- picking a different package afterward won't clobber
+// custom wording.
+let newPaymentAuto = true;
+el('newPayment').addEventListener('input', () => { newPaymentAuto = false; });
+el('newPackage').addEventListener('change', () => {
+  if (!newPaymentAuto) return;
+  const pkg = PACKAGES.find(p => p.id === el('newPackage').value);
+  el('newPayment').value = paymentTemplate(pkg);
+});
 
 // Restore a previously-entered key for this browser tab session only.
 const savedKey = sessionStorage.getItem('gallery_admin_key');
