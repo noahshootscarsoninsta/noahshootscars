@@ -1,5 +1,5 @@
 [build]
-publish = "noah-shoots-cars-site/noah-shoots-cars-site"
+publish = "noah-shoots-cars-site"
 
 [functions]
 directory = "netlify/functions"
