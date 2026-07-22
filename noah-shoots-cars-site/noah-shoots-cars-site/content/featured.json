@@ -1,1 +1,16 @@
-{"photos":[{"image":"/images/uploads/fav-img-2917.jpg"},{"image":"/images/uploads/fav-img-2983.jpg"},{"image":"/images/uploads/fav-img-3670.jpg"},{"image":"/images/uploads/fav-img-9207.jpg"}]}
+{
+  "photos": [
+    {
+      "image": "/images/uploads/fav-img-2983.jpg"
+    },
+    {
+      "image": "/images/uploads/fav-img-9207.jpg"
+    },
+    {
+      "image": "/images/uploads/fav-img-3670.jpg"
+    },
+    {
+      "image": "/images/uploads/fav-img-2917.jpg"
+    }
+  ]
+}
