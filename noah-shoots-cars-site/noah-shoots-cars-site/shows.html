@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upcoming Shows — Noah Shoots Cars</title>
+<meta name="description" content="Where to find Noah Shoots Cars next — upcoming car shows, meets, and events around Greenville, SC.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="shows">
+
+<header>
+  <nav>
+    <a class="brand" href="/">Noah Shoots <span>Cars</span></a>
+    <button class="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="navLinks">
+      <a href="/" data-page="home">Home</a>
+      <a href="/portfolio.html" data-page="portfolio">Portfolio</a>
+      <a href="/shows.html" data-page="shows">Shows</a>
+      <a href="/pricing.html" data-page="pricing">Pricing</a>
+      <a href="/about.html" data-page="about">About</a>
+      <a href="/contact.html" data-page="contact">Contact</a>
+    </div>
+  </nav>
+</header>
+
+<section>
+  <a class="back-link" href="/">&larr; Back to Home</a>
+  <div class="eyebrow">Where I'll Be</div>
+  <h2 style="font-size:38px;">Upcoming Shows</h2>
+  <p>Car shows, meets, and events I'm planning to shoot. Screenshot the card below and share it — that's what it's built for.</p>
+
+  <div id="nextShowWrap"></div>
+
+  <div class="show-grid-wrap">
+    <div class="eyebrow">All Shows</div>
+    <h2 style="font-size:24px;">Full schedule</h2>
+    <div class="show-grid" id="showsGrid"></div>
+  </div>
+</section>
+
+<footer>
+  © 2026 Noah Shoots Cars — Greenville, South Carolina · <a href="https://instagram.com/noahshootscars_" target="_blank" style="color:var(--accent);">@noahshootscars_</a>
+</footer>
+
+<script src="/js/site.js"></script>
+<script>
+  loadShows();
+</script>
+</body>
+</html>
