@@ -22,8 +22,9 @@
   @media(max-width:700px){.photo-grid{grid-template-columns:repeat(2,1fr);}}
   .photo-grid .t{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);position:relative;}
   .photo-grid .t img{width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;}
-  .photo-grid a.dl{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;
-    padding:5px 9px;border-radius:5px;text-decoration:none;}
+  .photo-grid .dl{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;
+    padding:5px 9px;border-radius:5px;text-decoration:none;border:none;font-family:inherit;cursor:pointer;}
+  .photo-grid .dl:disabled{opacity:.6;cursor:default;}
   .err{color:#ff8a8a;margin-top:14px;font-size:14px;}
 </style>
 </head>
@@ -54,12 +55,14 @@
       <strong>Paid — your final, full-quality photos are ready below.</strong>
     </div>
 
-    <h3>Preview photos</h3>
-    <div class="photo-grid" id="previewGrid"></div>
+    <div id="previewSection">
+      <h3>Preview photos</h3>
+      <div class="photo-grid" id="previewGrid"></div>
+    </div>
 
     <div id="finalSection" style="display:none;margin-top:40px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-        <h3 style="margin:0;">Final photos</h3>
+        <h3 id="finalHeading" style="margin:0;">Final photos</h3>
         <button class="btn btn-outline" id="downloadAllBtn">Download all (.zip)</button>
       </div>
       <div class="photo-grid" id="finalGrid"></div>
@@ -75,6 +78,65 @@ function slugFromPath(){
 const SLUG = slugFromPath();
 
 function el(id){ return document.getElementById(id); }
+
+// ---- Save-to-device handling ---------------------------------------------
+// Plain `<a download>` links force iOS Safari to save into the Files app
+// instead of the Photos library, and give an inconsistent result on Android.
+// We use the Web Share API (where a file can be shared) so the OS's own
+// "Save Image" sheet handles it -- that's what actually lands the photo in
+// Photos on iPhone and in Pictures/Gallery on Android. Desktop browsers
+// don't support sharing files this way, so they keep the normal file
+// download straight to the Downloads/Files location.
+function detectPlatform(){
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  return 'desktop';
+}
+const PLATFORM = detectPlatform();
+
+function saveLabel(){
+  if (PLATFORM === 'ios') return 'Save to Photos';
+  if (PLATFORM === 'android') return 'Save to Pictures';
+  return 'Download';
+}
+
+function directDownload(url, filename){
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function saveImage(url, filename, btn){
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    if (PLATFORM !== 'desktop' && navigator.share) {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+        return;
+      }
+    }
+    directDownload(url, filename);
+  } catch (e) {
+    // AbortError just means the user closed the share sheet -- not an error.
+    if (!e || e.name !== 'AbortError') {
+      directDownload(url, filename);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
 
 async function tryLogin(code){
   const res = await fetch('/.netlify/functions/gallery-auth', {
@@ -108,29 +170,46 @@ function renderGallery(data, token){
     el('paymentInstructions').textContent = data.paymentInstructions || '';
   }
 
-  const pGrid = el('previewGrid');
-  pGrid.innerHTML = '';
-  (data.previewImages || []).forEach(p => {
-    const t = document.createElement('div'); t.className = 't';
-    t.innerHTML = '<img src="' + p.url + '" alt="" loading="lazy">';
-    pGrid.appendChild(t);
-  });
-  if (!data.previewImages || !data.previewImages.length) {
-    pGrid.innerHTML = '<p style="color:var(--text-dim);">Preview photos will show up here once they’re added.</p>';
+  const unlocked = data.canDownload && data.finalImages && data.finalImages.length;
+
+  // Once the finals are unlocked, they replace the watermarked previews
+  // entirely rather than sitting in a separate section underneath.
+  if (unlocked) {
+    el('previewSection').style.display = 'none';
+    el('finalHeading').textContent = 'Your photos';
+  } else {
+    el('previewSection').style.display = 'block';
+    const pGrid = el('previewGrid');
+    pGrid.innerHTML = '';
+    (data.previewImages || []).forEach(p => {
+      const t = document.createElement('div'); t.className = 't';
+      t.innerHTML = '<img src="' + p.url + '" alt="" loading="lazy">';
+      pGrid.appendChild(t);
+    });
+    if (!data.previewImages || !data.previewImages.length) {
+      pGrid.innerHTML = '<p style="color:var(--text-dim);">Preview photos will show up here once they’re added.</p>';
+    }
   }
 
-  if (data.canDownload && data.finalImages && data.finalImages.length) {
+  if (unlocked) {
     el('finalSection').style.display = 'block';
     const fGrid = el('finalGrid');
     fGrid.innerHTML = '';
     data.finalImages.forEach(f => {
       const t = document.createElement('div'); t.className = 't';
-      t.innerHTML = '<img src="' + f.url + '" alt="" loading="lazy"><a class="dl" href="' + f.url + '" download>Download</a>';
+      const img = document.createElement('img');
+      img.src = f.url; img.alt = ''; img.loading = 'lazy';
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'dl'; btn.textContent = saveLabel();
+      btn.addEventListener('click', () => saveImage(f.url, f.filename, btn));
+      t.appendChild(img); t.appendChild(btn);
       fGrid.appendChild(t);
     });
     el('downloadAllBtn').onclick = () => {
       window.location = '/.netlify/functions/gallery-download-all?slug=' + encodeURIComponent(SLUG) + '&token=' + encodeURIComponent(token);
     };
+  } else {
+    el('finalSection').style.display = 'none';
   }
 }
 
