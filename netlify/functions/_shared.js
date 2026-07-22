@@ -98,6 +98,24 @@ function json(statusCode, data, extraHeaders) {
   };
 }
 
+// For packages that let the client pick favorites (e.g. "edit 10, choose 5
+// as finals"), only their chosen photos are ever deliverable as finals --
+// everything else the photographer uploaded stays preview-only forever.
+// Flat packages (no chooseCount) deliver every final that was uploaded,
+// same as before this feature existed. Used by every function that ever
+// hands out a final image (gallery-data, gallery-image, gallery-download-all)
+// so the rule can't be bypassed by hitting one endpoint directly.
+function deliverableFinals(gallery) {
+  const finals = gallery.finalImages || [];
+  const chooseCount = gallery.package && gallery.package.chooseCount;
+  if (!chooseCount) return finals;
+  const selected = gallery.selectedFilenames || [];
+  if (!selected.length) return [];
+  const selectedSet = new Set(selected);
+  return finals.filter(f => selectedSet.has(f.filename));
+}
+
 module.exports = {
-  checkAdminKey, hashCode, makeSalt, verifyCode, signToken, verifyToken, json, timingSafeEqual, SECRET, blobStore
+  checkAdminKey, hashCode, makeSalt, verifyCode, signToken, verifyToken, json, timingSafeEqual, SECRET, blobStore,
+  deliverableFinals
 };
