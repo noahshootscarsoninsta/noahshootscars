@@ -4,8 +4,10 @@
 // session token, and "final" (full-quality) images additionally require
 // paid === true and downloadsLocked === false, checked fresh every time
 // (not just at login), so revoking access or locking downloads takes
-// effect immediately.
-const { verifyToken, blobStore } = require('./_shared');
+// effect immediately. For "pick N of M" packages, only the client's chosen
+// favorites are ever servable as finals -- see deliverableFinals() in
+// _shared.js.
+const { verifyToken, blobStore, deliverableFinals } = require('./_shared');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') return { statusCode: 405, body: 'Method not allowed' };
@@ -31,7 +33,7 @@ exports.handler = async (event) => {
     return { statusCode: 403, body: 'Not available yet' };
   }
 
-  const list = set === 'final' ? (gallery.finalImages || []) : (gallery.previewImages || []);
+  const list = set === 'final' ? deliverableFinals(gallery) : (gallery.previewImages || []);
   const match = list.find(item => item.filename === file);
   if (!match) return { statusCode: 404, body: 'Not found' };
 
