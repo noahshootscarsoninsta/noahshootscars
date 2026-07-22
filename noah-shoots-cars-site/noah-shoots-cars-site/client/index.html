@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Your Gallery — Noah Shoots Cars</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  body{padding:0;}
+  .wrap{max-width:1000px;margin:0 auto;padding:50px 20px 90px;}
+  .lockbox{max-width:380px;margin:60px auto;text-align:center;}
+  .lockbox input{
+    width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    color:var(--text);padding:13px 14px;font-size:16px;text-align:center;margin-top:18px;
+  }
+  .lockbox button{margin-top:16px;}
+  .banner{border-radius:var(--radius);padding:18px 20px;margin-bottom:30px;border:1px solid var(--border);}
+  .banner.unpaid{background:rgba(255,90,31,.08);border-color:var(--accent);}
+  .banner.paid{background:rgba(90,200,120,.08);border-color:#4caf6b;}
+  .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px;}
+  @media(max-width:700px){.photo-grid{grid-template-columns:repeat(2,1fr);}}
+  .photo-grid .t{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);position:relative;}
+  .photo-grid .t img{width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;}
+  .photo-grid a.dl{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;
+    padding:5px 9px;border-radius:5px;text-decoration:none;}
+  .err{color:#ff8a8a;margin-top:14px;font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="brand" href="/" style="display:block;margin-bottom:10px;">Noah Shoots <span style="color:var(--accent);">Cars</span></a>
+
+  <div id="lockScreen" class="lockbox">
+    <div class="eyebrow" style="text-align:center;">Private Gallery</div>
+    <h2>Enter your access code</h2>
+    <p style="color:var(--text-dim);">This link is just for you — enter the code you were given to view your photos.</p>
+    <input type="text" id="codeInput" placeholder="Access code" autocomplete="off">
+    <button class="btn btn-accent" id="unlockBtn" style="width:100%;">View my gallery</button>
+    <div class="err" id="lockErr"></div>
+  </div>
+
+  <div id="gallery" style="display:none;">
+    <div class="eyebrow">Private Gallery</div>
+    <h2 id="clientHeading">Your photos</h2>
+    <p id="galleryDesc"></p>
+
+    <div class="banner unpaid" id="unpaidBanner" style="display:none;">
+      <strong>Preview only — final photos unlock after payment.</strong>
+      <p id="paymentPrice" style="margin:6px 0 0;color:var(--text);"></p>
+      <p id="paymentInstructions" style="margin:6px 0 0;white-space:pre-wrap;"></p>
+    </div>
+    <div class="banner paid" id="paidBanner" style="display:none;">
+      <strong>Paid — your final, full-quality photos are ready below.</strong>
+    </div>
+
+    <h3>Preview photos</h3>
+    <div class="photo-grid" id="previewGrid"></div>
+
+    <div id="finalSection" style="display:none;margin-top:40px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <h3 style="margin:0;">Final photos</h3>
+        <button class="btn btn-outline" id="downloadAllBtn">Download all (.zip)</button>
+      </div>
+      <div class="photo-grid" id="finalGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function slugFromPath(){
+  const parts = location.pathname.split('/').filter(Boolean); // ["client", "slug"]
+  return (parts[1] || '').toLowerCase();
+}
+const SLUG = slugFromPath();
+
+function el(id){ return document.getElementById(id); }
+
+async function tryLogin(code){
+  const res = await fetch('/.netlify/functions/gallery-auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug: SLUG, code })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Invalid access code');
+  return data.token;
+}
+
+async function loadGallery(token){
+  const res = await fetch('/.netlify/functions/gallery-data?slug=' + encodeURIComponent(SLUG) + '&token=' + encodeURIComponent(token));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Could not load gallery');
+  return data;
+}
+
+function renderGallery(data, token){
+  el('lockScreen').style.display = 'none';
+  el('gallery').style.display = 'block';
+  el('clientHeading').textContent = data.clientName ? data.clientName + '’s photos' : 'Your photos';
+  el('galleryDesc').textContent = data.description || '';
+
+  if (data.paid) {
+    el('paidBanner').style.display = 'block';
+  } else {
+    el('unpaidBanner').style.display = 'block';
+    el('paymentPrice').textContent = data.price ? ('Package price: ' + data.price) : '';
+    el('paymentInstructions').textContent = data.paymentInstructions || '';
+  }
+
+  const pGrid = el('previewGrid');
+  pGrid.innerHTML = '';
+  (data.previewImages || []).forEach(p => {
+    const t = document.createElement('div'); t.className = 't';
+    t.innerHTML = '<img src="' + p.url + '" alt="" loading="lazy">';
+    pGrid.appendChild(t);
+  });
+  if (!data.previewImages || !data.previewImages.length) {
+    pGrid.innerHTML = '<p style="color:var(--text-dim);">Preview photos will show up here once they’re added.</p>';
+  }
+
+  if (data.canDownload && data.finalImages && data.finalImages.length) {
+    el('finalSection').style.display = 'block';
+    const fGrid = el('finalGrid');
+    fGrid.innerHTML = '';
+    data.finalImages.forEach(f => {
+      const t = document.createElement('div'); t.className = 't';
+      t.innerHTML = '<img src="' + f.url + '" alt="" loading="lazy"><a class="dl" href="' + f.url + '" download>Download</a>';
+      fGrid.appendChild(t);
+    });
+    el('downloadAllBtn').onclick = () => {
+      window.location = '/.netlify/functions/gallery-download-all?slug=' + encodeURIComponent(SLUG) + '&token=' + encodeURIComponent(token);
+    };
+  }
+}
+
+async function attemptUnlock(code){
+  el('lockErr').textContent = '';
+  try {
+    const token = await tryLogin(code);
+    sessionStorage.setItem('client_gallery_token_' + SLUG, token);
+    const data = await loadGallery(token);
+    renderGallery(data, token);
+  } catch (e) {
+    el('lockErr').textContent = e.message;
+  }
+}
+
+el('unlockBtn').onclick = () => attemptUnlock(el('codeInput').value.trim());
+el('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptUnlock(el('codeInput').value.trim()); });
+
+if (!SLUG) {
+  el('lockErr').textContent = 'No gallery specified.';
+} else {
+  const saved = sessionStorage.getItem('client_gallery_token_' + SLUG);
+  if (saved) {
+    loadGallery(saved).then(data => renderGallery(data, saved)).catch(() => {
+      sessionStorage.removeItem('client_gallery_token_' + SLUG);
+    });
+  }
+}
+</script>
+</body>
+</html>
