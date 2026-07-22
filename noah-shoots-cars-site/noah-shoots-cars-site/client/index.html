@@ -25,6 +25,16 @@
   .photo-grid .dl{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;
     padding:5px 9px;border-radius:5px;text-decoration:none;border:none;font-family:inherit;cursor:pointer;}
   .photo-grid .dl:disabled{opacity:.6;cursor:default;}
+  .photo-grid.selectable .t{cursor:pointer;}
+  .photo-grid.selectable .t .check{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;
+    background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;
+    opacity:0;transition:opacity .15s;}
+  .photo-grid.selectable .t.picked{outline:3px solid var(--accent);outline-offset:-3px;}
+  .photo-grid.selectable .t.picked .check{opacity:1;background:var(--accent);}
+  .selection-bar{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap;}
+  .msg{font-size:13.5px;margin-top:10px;}
+  .msg.ok{color:#8fd18f;}
+  .msg.err{color:#ff8a8a;}
   .err{color:#ff8a8a;margin-top:14px;font-size:14px;}
 </style>
 </head>
@@ -53,6 +63,17 @@
     </div>
     <div class="banner paid" id="paidBanner" style="display:none;">
       <strong>Paid — your final, full-quality photos are ready below.</strong>
+    </div>
+
+    <div id="selectionSection" style="display:none;">
+      <h3>Choose your favorites</h3>
+      <p id="selectionHint" style="color:var(--text-dim);"></p>
+      <div class="photo-grid selectable" id="selectionGrid"></div>
+      <div class="selection-bar">
+        <span id="selectionCount" style="color:var(--text-dim);font-size:14px;"></span>
+        <button class="btn btn-accent" id="saveSelectionBtn" disabled>Save my picks</button>
+      </div>
+      <div class="msg" id="selectionMsg"></div>
     </div>
 
     <div id="previewSection">
@@ -178,6 +199,19 @@ function renderGallery(data, token){
   }
 
   const unlocked = data.canDownload && data.finalImages && data.finalImages.length;
+  const chooseCount = data.package && data.package.chooseCount;
+
+  if (chooseCount && !unlocked) {
+    // "Pick N of M" packages: the client chooses their favorites from the
+    // full preview set before there are any finals to show -- the plain
+    // preview/final sections stay hidden until that's done (or until the
+    // photographer unlocks the finals matching whatever was picked).
+    el('previewSection').style.display = 'none';
+    el('finalSection').style.display = 'none';
+    renderSelectionUI(data, token, chooseCount);
+    return;
+  }
+  el('selectionSection').style.display = 'none';
 
   // Once the finals are unlocked, they replace the watermarked previews
   // entirely rather than sitting in a separate section underneath.
@@ -218,6 +252,73 @@ function renderGallery(data, token){
   } else {
     el('finalSection').style.display = 'none';
   }
+}
+
+// "Pick N of M" packages (e.g. edit 10, choose 5 as finals): lets the
+// client tap their favorites out of the full preview set and save that
+// choice, which the photographer then edits into the finals. Picks can be
+// changed anytime by saving again -- see gallery-select.js for why there's
+// no hard lock.
+function renderSelectionUI(data, token, chooseCount){
+  el('selectionSection').style.display = 'block';
+  const previews = data.previewImages || [];
+  el('selectionHint').textContent = previews.length
+    ? ('Tap ' + chooseCount + ' of your ' + previews.length + ' preview photos to keep as your finals, then save your picks.')
+    : 'Preview photos will show up here once they’re added — check back soon.';
+
+  const selected = new Set(data.selectedFilenames || []);
+  const grid = el('selectionGrid');
+  grid.innerHTML = '';
+  previews.forEach(p => {
+    const t = document.createElement('div');
+    t.className = 't' + (selected.has(p.filename) ? ' picked' : '');
+    t.innerHTML = '<img src="' + p.url + '" alt="" loading="lazy"><div class="check">✓</div>';
+    t.addEventListener('click', () => {
+      if (selected.has(p.filename)) {
+        selected.delete(p.filename);
+        t.classList.remove('picked');
+      } else {
+        if (selected.size >= chooseCount) return;
+        selected.add(p.filename);
+        t.classList.add('picked');
+      }
+      updateSelectionCount(selected, chooseCount);
+    });
+    grid.appendChild(t);
+  });
+  updateSelectionCount(selected, chooseCount);
+
+  el('saveSelectionBtn').onclick = async () => {
+    if (selected.size !== chooseCount) return;
+    const btn = el('saveSelectionBtn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    el('selectionMsg').textContent = '';
+    try {
+      const res = await fetch('/.netlify/functions/gallery-select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: SLUG, token, filenames: Array.from(selected) })
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || 'Could not save your picks');
+      el('selectionMsg').textContent = 'Saved! Your photographer will prepare these ' + chooseCount + ' as your finals.';
+      el('selectionMsg').className = 'msg ok';
+      btn.textContent = 'Update my picks';
+    } catch (e) {
+      el('selectionMsg').textContent = e.message;
+      el('selectionMsg').className = 'msg err';
+      btn.textContent = originalLabel;
+    } finally {
+      btn.disabled = selected.size !== chooseCount;
+    }
+  };
+}
+
+function updateSelectionCount(selected, chooseCount){
+  el('selectionCount').textContent = selected.size + ' of ' + chooseCount + ' selected';
+  el('saveSelectionBtn').disabled = selected.size !== chooseCount;
 }
 
 async function attemptUnlock(code){
