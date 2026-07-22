@@ -138,6 +138,12 @@ exports.handler = async (event) => {
     }
     if (body.paymentInstructions !== undefined) gallery.paymentInstructions = body.paymentInstructions;
     if (body.expiresAt !== undefined) gallery.expiresAt = body.expiresAt;
+    if (body.clearSelection) {
+      // Lets the photographer reset a client's "pick your favorites"
+      // choices, e.g. if the client wants a do-over before finals are sent.
+      gallery.selectedFilenames = [];
+      delete gallery.selectionSubmittedAt;
+    }
     if (body.code) {
       if (String(body.code).length < 4) return json(400, { error: 'Access code should be at least 4 characters' });
       const salt = makeSalt();
