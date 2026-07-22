@@ -1,10 +1,15 @@
 {
   "shows": [
     {
+      "endTime": "12pm",
+      "startTime": "4pm",
       "status": "I'll be there",
-      "title": "Anderson MotorSpeedway Drift Event",
-      "location": "Anderson MotorSpeeway",
-      "link": "iakdflnaslnkf"
+      "address": "1311 Martin Luther King Blvd., Anderson, IN 46016",
+      "location": "Anderson Motor Speedway",
+      "title": "Anderson Motor Speedway Drift Event",
+      "link": "https://www.instagram.com/p/Da8oJzuJmhV/",
+      "image": "/images/uploads/screenshot-2026-07-22-152906.png",
+      "description": "Drift Event from 4pm to Midnight"
     }
   ]
 }
