@@ -1,4 +1,6 @@
+[build]
+publish = "noah-shoots-cars-site/noah-shoots-cars-site"
+
 [functions]
-  directory = "netlify/functions"
-    node_bundler = "esbuild"
-    
+directory = "netlify/functions"
+node_bundler = "esbuild"
