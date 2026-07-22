@@ -1,7 +1,9 @@
 // GET ?slug=&token= -> gallery details for an already-authenticated session.
 // Final (full-quality) images are only ever included in the response once
 // paid === true and downloadsLocked === false, checked server-side here.
-const { verifyToken, json, blobStore } = require('./_shared');
+// For "pick N of M" packages, only the client's chosen favorites are ever
+// included as finals -- see deliverableFinals() in _shared.js.
+const { verifyToken, json, blobStore, deliverableFinals } = require('./_shared');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') return json(405, { error: 'Method not allowed' });
@@ -25,6 +27,8 @@ exports.handler = async (event) => {
   }
 
   const canDownload = !!gallery.paid && !gallery.downloadsLocked;
+  const chooseCount = gallery.package && gallery.package.chooseCount;
+  const selectedFilenames = gallery.selectedFilenames || [];
   const imgUrl = (set, filename) =>
     '/.netlify/functions/gallery-image?slug=' + encodeURIComponent(slug) +
     '&token=' + encodeURIComponent(token) +
@@ -39,11 +43,14 @@ exports.handler = async (event) => {
     paymentInstructions: gallery.paymentInstructions || '',
     paid: !!gallery.paid,
     canDownload,
+    selectionRequired: !!chooseCount,
+    selectionSubmitted: !!selectedFilenames.length,
+    selectedFilenames,
     previewImages: (gallery.previewImages || []).map(p => ({
       filename: p.filename,
       url: imgUrl('preview', p.filename)
     })),
-    finalImages: canDownload ? (gallery.finalImages || []).map(f => ({
+    finalImages: canDownload ? deliverableFinals(gallery).map(f => ({
       filename: f.filename,
       url: imgUrl('final', f.filename)
     })) : []
