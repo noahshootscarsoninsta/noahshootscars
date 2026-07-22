@@ -101,6 +101,13 @@ function saveLabel(){
   return 'Download';
 }
 
+function packageSummary(pkg, fallbackPrice){
+  if (!pkg) return fallbackPrice ? ('Package price: ' + fallbackPrice) : '';
+  return pkg.chooseCount
+    ? ('Package price: ' + pkg.price + ' — I’ll edit ' + pkg.editedCount + ' photos, you choose your favorite ' + pkg.chooseCount + ' as finals.')
+    : ('Package price: ' + pkg.price + ' — ' + pkg.editedCount + ' professionally edited photos, all delivered.');
+}
+
 function directDownload(url, filename){
   const a = document.createElement('a');
   a.href = url;
@@ -166,7 +173,7 @@ function renderGallery(data, token){
     el('paidBanner').style.display = 'block';
   } else {
     el('unpaidBanner').style.display = 'block';
-    el('paymentPrice').textContent = data.price ? ('Package price: ' + data.price) : '';
+    el('paymentPrice').textContent = packageSummary(data.package, data.price);
     el('paymentInstructions').textContent = data.paymentInstructions || '';
   }
 
