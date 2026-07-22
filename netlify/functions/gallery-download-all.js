@@ -1,8 +1,10 @@
-// GET ?slug=&token= -> zips every final photo and streams it as one download.
+// GET ?slug=&token= -> zips every deliverable final photo and streams it as
+// one download. For "pick N of M" packages, only the client's chosen
+// favorites are ever deliverable -- see deliverableFinals() in _shared.js.
 // Netlify's synchronous functions cap response payloads at a few MB, so this
 // is best-effort for smaller galleries; the gallery page always also offers
 // per-photo download links (via gallery-image.js) which have no such cap.
-const { verifyToken, blobStore } = require('./_shared');
+const { verifyToken, blobStore, deliverableFinals } = require('./_shared');
 const { buildZip } = require('./_zip');
 
 const MAX_ZIP_INPUT_BYTES = 4 * 1024 * 1024; // stay safely under the ~6MB function response cap after base64 overhead
@@ -26,7 +28,7 @@ exports.handler = async (event) => {
     return { statusCode: 403, body: 'Downloads are not available yet' };
   }
 
-  const finals = gallery.finalImages || [];
+  const finals = deliverableFinals(gallery);
   if (!finals.length) return { statusCode: 404, body: 'No final photos yet' };
 
   const imgStore = blobStore('gallery-images');
