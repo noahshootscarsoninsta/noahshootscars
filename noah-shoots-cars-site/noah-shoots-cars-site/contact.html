@@ -38,18 +38,79 @@
 </div>
 </div>
 <div>
-<!--
-GHL FORM EMBED GOES HERE
-------------------------
-In GoHighLevel: Sites > Forms > pick/create your contact form > Integrate tab > Copy Code.
-Paste that whole <script>/<iframe> snippet in place of the placeholder div below.
-Once it's in, submissions here will create/update a contact in GoHighLevel
-and can trigger your workflows automatically — same as a native GHL site.
--->
-<div class="ghl-form-slot" id="ghlFormSlot">
-<strong style="color:var(--text);">GoHighLevel form goes here.</strong>
-<p style="margin:10px 0 0;">Paste your GHL form embed code (Sites → Forms → Integrate → Copy Code) into contact.html in place of this box.</p>
+<form class="contact-form" id="contactForm" novalidate>
+
+<div class="form-msg error" id="contactFormMsg"></div>
+
+<!-- Honeypot: hidden from real visitors via CSS. Bots that auto-fill every
+field will fill this too, which tells the server to silently ignore them. -->
+<div class="hp-field" aria-hidden="true">
+<label for="website">Leave this field blank</label>
+<input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
 </div>
+
+<div class="field-row">
+<div class="field">
+<label for="cf-name">Name <span class="req">*</span></label>
+<input type="text" id="cf-name" name="name" required autocomplete="name">
+<div class="field-error">Please enter your name.</div>
+</div>
+<div class="field">
+<label for="cf-phone">Phone number</label>
+<input type="tel" id="cf-phone" name="phone" autocomplete="tel" placeholder="(555) 123-4567">
+<div class="field-error">Please enter a phone number.</div>
+</div>
+</div>
+
+<div class="field-row">
+<div class="field">
+<label for="cf-instagram">Instagram username <span class="opt">(optional)</span></label>
+<input type="text" id="cf-instagram" name="instagram" autocomplete="off" placeholder="@yourhandle">
+</div>
+<div class="field">
+<label for="cf-email">Email</label>
+<input type="email" id="cf-email" name="email" autocomplete="email" placeholder="you@example.com">
+<div class="field-error">Please enter a valid email address.</div>
+</div>
+</div>
+
+<div class="field">
+<label for="cf-car">Car year / make / model <span class="opt">(optional)</span></label>
+<input type="text" id="cf-car" name="carInfo" autocomplete="off" placeholder="e.g. 2019 Ford Mustang GT">
+</div>
+
+<div class="field-row">
+<div class="field">
+<label for="cf-request-type">Type of request <span class="req">*</span></label>
+<select id="cf-request-type" name="requestType" required>
+<option value="" disabled selected>Choose one…</option>
+<option value="private_shoot">Private shoot</option>
+<option value="carshow_photos">Car-show photos</option>
+<option value="general_question">General question</option>
+</select>
+<div class="field-error">Please choose a type of request.</div>
+</div>
+<div class="field">
+<label for="cf-contact-method">Preferred contact method <span class="req">*</span></label>
+<select id="cf-contact-method" name="contactMethod" required>
+<option value="" disabled selected>Choose one…</option>
+<option value="text">Text</option>
+<option value="instagram">Instagram</option>
+<option value="email">Email</option>
+</select>
+<div class="field-error">Please choose a preferred contact method.</div>
+</div>
+</div>
+
+<div class="field">
+<label for="cf-message">Message <span class="req">*</span></label>
+<textarea id="cf-message" name="message" required placeholder="Tell me a bit about what you're looking for…"></textarea>
+<div class="field-error">Please add a short message.</div>
+</div>
+
+<button type="submit" class="btn btn-accent" id="contactSubmitBtn">Send Request</button>
+<p class="form-note">Your info goes straight to Noah — you'll get a text confirming he got it.</p>
+</form>
 </div>
 </section>
 
@@ -58,5 +119,8 @@ and can trigger your workflows automatically — same as a native GHL site.
 </footer>
 
 <script src="/js/site.js"></script>
+<script>
+initContactForm();
+</script>
 </body>
 </html>
