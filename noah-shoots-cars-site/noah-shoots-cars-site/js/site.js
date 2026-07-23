@@ -242,3 +242,102 @@ async function loadShows() {
 		gridWrap.appendChild(card);
 	});
 }
+
+// ---- Contact page: custom GoHighLevel-connected form ----
+// Client-side checks here are just for a fast, friendly experience -- the
+// Netlify function (netlify/functions/contact-submit.js) re-checks
+// everything server-side before touching GoHighLevel, so nothing here needs
+// to be trusted for correctness or security.
+function initContactForm() {
+	const form = document.getElementById('contactForm');
+	if (!form) return;
+
+	const msgBox = document.getElementById('contactFormMsg');
+	const submitBtn = document.getElementById('contactSubmitBtn');
+
+	function clearErrors() {
+		form.querySelectorAll('.field.has-error').forEach(f => f.classList.remove('has-error'));
+		msgBox.classList.remove('show');
+		msgBox.textContent = '';
+	}
+
+	function showFieldError(input) {
+		const field = input.closest('.field');
+		if (field) field.classList.add('has-error');
+	}
+
+	function showFormMessage(text) {
+		msgBox.textContent = text;
+		msgBox.classList.add('show');
+	}
+
+	// Mirrors the required-field and conditional (contact-method-needs-a-way-
+	// to-reach-you) rules enforced again on the server.
+	function validate(data) {
+		let firstInvalid = null;
+		const invalid = (el) => { showFieldError(el); if (!firstInvalid) firstInvalid = el; };
+
+		if (!data.name) invalid(form.elements.name);
+		if (!data.phone && !data.email) {
+			invalid(form.elements.phone);
+			invalid(form.elements.email);
+		}
+		if (!data.requestType) invalid(form.elements.requestType);
+		if (!data.contactMethod) invalid(form.elements.contactMethod);
+		if (!data.message) invalid(form.elements.message);
+		if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) invalid(form.elements.email);
+		if (data.contactMethod === 'text' && !data.phone) invalid(form.elements.phone);
+		if (data.contactMethod === 'email' && !data.email) invalid(form.elements.email);
+
+		return firstInvalid;
+	}
+
+	form.addEventListener('submit', async (e) => {
+		e.preventDefault();
+		clearErrors();
+
+		const data = {
+			name: form.elements.name.value.trim(),
+			phone: form.elements.phone.value.trim(),
+			instagram: form.elements.instagram.value.trim(),
+			email: form.elements.email.value.trim(),
+			carInfo: form.elements.carInfo.value.trim(),
+			requestType: form.elements.requestType.value,
+			contactMethod: form.elements.contactMethod.value,
+			message: form.elements.message.value.trim(),
+			website: form.elements.website.value // honeypot
+		};
+
+		const firstInvalid = validate(data);
+		if (firstInvalid) {
+			showFormMessage('Please fix the highlighted field(s) below.');
+			firstInvalid.focus();
+			return;
+		}
+
+		submitBtn.disabled = true;
+		submitBtn.textContent = 'Sending…';
+
+		try {
+			const res = await fetch('/.netlify/functions/contact-submit', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+			const result = await res.json().catch(() => ({}));
+
+			if (res.ok && result.ok) {
+				window.location.href = '/thank-you.html';
+				return;
+			}
+
+			showFormMessage(result.error || 'Something went wrong sending your request. Please try again, or message Noah directly on Instagram.');
+			submitBtn.disabled = false;
+			submitBtn.textContent = 'Send Request';
+		} catch (err) {
+			showFormMessage("Couldn't reach the server. Check your connection and try again, or message Noah directly on Instagram.");
+			submitBtn.disabled = false;
+			submitBtn.textContent = 'Send Request';
+		}
+	});
+}
