@@ -36,6 +36,7 @@ function checkAdminKey(event) {
   if (!SECRET) return false;
   const headers = event.headers || {};
   const provided = headers['x-admin-key'] || headers['X-Admin-Key'] || '';
+  console.log('[gallery-admin-auth-debug]', 'secretConfigured=' + (!!SECRET), 'secretLen=' + SECRET.length, 'providedLen=' + provided.length, 'sameLen=' + (SECRET.length === provided.length), 'trimmedProvidedMatchesSecret=' + (provided.trim() === SECRET));
   if (!provided) return false;
   return timingSafeEqual(provided, SECRET);
 }
