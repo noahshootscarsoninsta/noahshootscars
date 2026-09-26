@@ -1,5 +1,5 @@
 // Shared helpers for the private client gallery functions.
-// (redeploy trigger: refresh GALLERY_ADMIN_KEY into function runtime)
+// (redeploy trigger: refresh GALLERY_ADMIN_KEY into function runtime) (2)
 // Nothing secret ever lives in git -- the only secret this whole system
 // needs is the GALLERY_ADMIN_KEY environment variable, set in the Netlify
 // dashboard (Site configuration -> Environment variables), never committed.
