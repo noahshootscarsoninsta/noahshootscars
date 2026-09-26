@@ -17,6 +17,7 @@ const SECRET = process.env.GALLERY_ADMIN_KEY || '';
 // is the Site ID from Site configuration -> General -> Site details, and
 // BLOBS_TOKEN is a Personal access token from User settings -> Applications.
 function blobStore(name) {
+  console.log('[gallery-blobs-debug]', 'siteIdSet=' + (!!process.env.BLOBS_SITE_ID), 'siteIdLen=' + (process.env.BLOBS_SITE_ID||'').length, 'tokenSet=' + (!!process.env.BLOBS_TOKEN), 'tokenLen=' + (process.env.BLOBS_TOKEN||'').length);
   if (process.env.BLOBS_SITE_ID && process.env.BLOBS_TOKEN) {
     return getStore({ name, siteID: process.env.BLOBS_SITE_ID, token: process.env.BLOBS_TOKEN });
   }
