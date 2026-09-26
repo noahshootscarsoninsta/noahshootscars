@@ -1,5 +1,4 @@
 // Shared helpers for the private client gallery functions.
-// (redeploy trigger: refresh GALLERY_ADMIN_KEY into function runtime) (2) (3)
 // Nothing secret ever lives in git -- the only secret this whole system
 // needs is the GALLERY_ADMIN_KEY environment variable, set in the Netlify
 // dashboard (Site configuration -> Environment variables), never committed.
@@ -17,7 +16,6 @@ const SECRET = process.env.GALLERY_ADMIN_KEY || '';
 // is the Site ID from Site configuration -> General -> Site details, and
 // BLOBS_TOKEN is a Personal access token from User settings -> Applications.
 function blobStore(name) {
-  console.log('[gallery-blobs-debug]', 'siteIdSet=' + (!!process.env.BLOBS_SITE_ID), 'siteIdLen=' + (process.env.BLOBS_SITE_ID||'').length, 'tokenSet=' + (!!process.env.BLOBS_TOKEN), 'tokenLen=' + (process.env.BLOBS_TOKEN||'').length);
   if (process.env.BLOBS_SITE_ID && process.env.BLOBS_TOKEN) {
     return getStore({ name, siteID: process.env.BLOBS_SITE_ID, token: process.env.BLOBS_TOKEN });
   }
@@ -37,7 +35,6 @@ function checkAdminKey(event) {
   if (!SECRET) return false;
   const headers = event.headers || {};
   const provided = headers['x-admin-key'] || headers['X-Admin-Key'] || '';
-  console.log('[gallery-admin-auth-debug]', 'secretConfigured=' + (!!SECRET), 'secretLen=' + SECRET.length, 'providedLen=' + provided.length, 'sameLen=' + (SECRET.length === provided.length), 'trimmedProvidedMatchesSecret=' + (provided.trim() === SECRET));
   if (!provided) return false;
   return timingSafeEqual(provided, SECRET);
 }
