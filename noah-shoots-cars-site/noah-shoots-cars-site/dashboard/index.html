@@ -128,6 +128,23 @@
     <section class="panel" id="panel-stats">
       <h2>Business Statistics</h2>
       <p class="lede">Updates automatically from customers and shoots.</p>
+
+      <div class="goal-card" id="goalCard">
+        <div class="goal-top">
+          <div>
+            <div class="goal-month" id="goalMonthLabel"></div>
+            <div class="goal-numbers"><span id="goalCurrent">$0</span> <span class="goal-of" id="goalTarget">—</span></div>
+          </div>
+          <button class="btn outline small" id="editGoalBtn">Edit goal</button>
+        </div>
+        <div class="bar-track goal-bar-track"><div class="bar-fill" id="goalBarFill"></div></div>
+        <div class="goal-edit" id="goalEditRow" style="display:none;">
+          <input type="number" id="goalInput" min="0" step="1" placeholder="Monthly goal ($)">
+          <button class="btn primary small" id="saveGoalBtn">Save</button>
+          <button class="btn outline small" id="cancelGoalBtn">Cancel</button>
+        </div>
+      </div>
+
       <div class="cards" id="statTiles"></div>
       <div class="section-row"><h3>Monthly revenue</h3></div>
       <div class="trend" id="trendChart"></div>
@@ -141,7 +158,7 @@
   "use strict";
   var API = '/.netlify/functions/dashboard-api';
   var KEY_STORAGE = 'nsc_dashboard_key';
-  var data = { customers: [], shoots: [], showReports: [], pending: null, lastRun: null };
+  var data = { customers: [], shoots: [], showReports: [], pending: null, lastRun: null, settings: {} };
 
   // ---------------- auth / gate ----------------
   function getKey(){ return sessionStorage.getItem(KEY_STORAGE) || ''; }
@@ -501,6 +518,48 @@
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
   }
 
+  function monthLabel(mk){
+    if (!mk) return '';
+    var parts = mk.split('-');
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+    return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+  }
+
+  // Current-month income vs. the goal is computed fresh from today's date
+  // every time this renders, so it rolls over to the new month automatically
+  // at midnight on the 1st -- nothing to reset by hand, and past months keep
+  // their own totals in the trend chart below.
+  function renderGoal(curMonthKey, thisMonthRevenue){
+    var goal = (data.settings && Number(data.settings.monthlyGoal)) || 0;
+    document.getElementById('goalMonthLabel').textContent = 'This month — ' + monthLabel(curMonthKey);
+    document.getElementById('goalCurrent').textContent = '$' + thisMonthRevenue.toLocaleString();
+    document.getElementById('goalTarget').textContent = goal ? ('of $' + goal.toLocaleString() + ' goal') : '— no monthly goal set yet';
+    var fill = document.getElementById('goalBarFill');
+    if (!goal) {
+      fill.style.width = '0%';
+      fill.style.background = 'var(--border)';
+      return;
+    }
+    var pct = Math.min(100, Math.round((thisMonthRevenue / goal) * 100));
+    fill.style.width = pct + '%';
+    fill.style.background = thisMonthRevenue >= goal ? 'var(--good)' : (pct >= 50 ? 'var(--accent)' : 'var(--warn)');
+  }
+
+  document.getElementById('editGoalBtn').addEventListener('click', function(){
+    document.getElementById('goalInput').value = (data.settings && data.settings.monthlyGoal) || '';
+    document.getElementById('goalEditRow').style.display = '';
+  });
+  document.getElementById('cancelGoalBtn').addEventListener('click', function(){
+    document.getElementById('goalEditRow').style.display = 'none';
+  });
+  document.getElementById('saveGoalBtn').addEventListener('click', function(){
+    var val = Number(document.getElementById('goalInput').value) || 0;
+    api('updateSettings', { patch: { monthlyGoal: val } }).then(function(){
+      document.getElementById('goalEditRow').style.display = 'none';
+      return refreshAndRender();
+    });
+  });
+
   function renderStats(){
     var customers = data.customers || [];
     var shoots = data.shoots || [];
@@ -517,6 +576,9 @@
 
     customers.forEach(function(c){ if (c.purchase) { var mk = monthKeyOf(c.purchase.date); if (mk) monthly[mk] = (monthly[mk]||0) + (Number(c.purchase.amount)||0); } });
     shoots.forEach(function(s){ if (s.status === 'completed') { var mk = monthKeyOf(s.shootDate) || monthKeyOf(s.updatedAt); if (mk) monthly[mk] = (monthly[mk]||0) + (Number(s.price)||0); } });
+
+    var curMonthKey = monthKeyOf(new Date().toISOString());
+    renderGoal(curMonthKey, monthly[curMonthKey] || 0);
 
     var tiles = [
       ['$' + totalRevenue.toLocaleString(), 'Total revenue'],
