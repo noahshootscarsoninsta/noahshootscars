@@ -122,7 +122,7 @@ async function loadFeatured() {
 	if (!grid) return;
 	const data = await loadJSON('/content/featured.json');
 	const photos = (data && data.photos) || [];
-	for (let i = 0; i < 4; i++) {
+	for (let i = 0; i < 8; i++) {
 		const photo = photos[i];
 		if (photo && photo.image) {
 			const wrap = document.createElement('div');
