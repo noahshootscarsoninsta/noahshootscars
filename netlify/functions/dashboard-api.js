@@ -30,15 +30,33 @@ exports.handler = async (event) => {
 
   // ---------- read everything the dashboard needs in one call ----------
   if (action === 'getAll') {
-    const [customers, shoots, showReports, pending, lastRun] = await Promise.all([
+    const [customers, shoots, showReports, pending, lastRun, settings] = await Promise.all([
       getList(store, 'customers'),
       getList(store, 'shoots'),
       getList(store, 'show-reports'),
       store.get('show-search-pending', { type: 'json' }),
-      store.get('show-search-last', { type: 'json' })
+      store.get('show-search-last', { type: 'json' }),
+      store.get('settings', { type: 'json' })
     ]);
     showReports.sort((a, b) => String(b.ranAt || '').localeCompare(String(a.ranAt || '')));
-    return json(200, { customers, shoots, showReports, pending: pending || null, lastRun: lastRun || null });
+    return json(200, {
+      customers, shoots, showReports,
+      pending: pending || null,
+      lastRun: lastRun || null,
+      settings: settings || {}
+    });
+  }
+
+  // ---------------------------- settings ----------------------------
+  // Currently just the monthly income goal shown on Business Stats. Stored
+  // as its own blob so it survives independently of customers/shoots.
+  if (action === 'updateSettings') {
+    const patch = body.patch || {};
+    const current = (await store.get('settings', { type: 'json' })) || {};
+    const updated = Object.assign({}, current, patch);
+    if (patch.monthlyGoal !== undefined) updated.monthlyGoal = Number(patch.monthlyGoal) || 0;
+    await store.setJSON('settings', updated);
+    return json(200, { settings: updated });
   }
 
   // ---------------------------- customers ----------------------------
