@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Dashboard — Noah Shoots Cars</title>
+<link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div class="gate-wrap" id="gate">
+  <h1>Business Dashboard</h1>
+  <p>Not linked anywhere on the public site. Private to you.</p>
+  <div class="gate-card">
+    <div class="field"><label for="dashKey">Dashboard key</label>
+      <input type="password" id="dashKey" placeholder="Enter your dashboard key" autocomplete="off">
+    </div>
+    <div class="form-actions"><button class="btn primary" id="unlockBtn">Unlock</button></div>
+    <div class="msg" id="gateMsg"></div>
+  </div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="app" style="display:none;">
+  <header class="dash-header">
+    <div>
+      <div class="brand">NOAH SHOOTS <span>CARS</span></div>
+      <div class="sub">Business Dashboard</div>
+    </div>
+    <button class="logout-btn" id="logoutBtn">Lock dashboard</button>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="shows">Car Show Finder</button>
+    <button class="tab-btn" data-tab="customers">Customer Tracker</button>
+    <button class="tab-btn" data-tab="shoots">Private Shoots</button>
+    <button class="tab-btn" data-tab="stats">Business Stats</button>
+  </nav>
+
+  <main class="main">
+
+    <!-- ---------- CAR SHOW FINDER ---------- -->
+    <section class="panel active" id="panel-shows">
+      <div class="section-row">
+        <div>
+          <h2>Car Show Finder</h2>
+          <p class="lede">Verified shows worth shooting, found automatically.</p>
+        </div>
+        <button class="btn primary" id="runSearchBtn">Run fresh search</button>
+      </div>
+      <div class="last-run" id="lastRunNote">—</div>
+      <div class="report-picker">
+        <label for="reportSelect" style="color:var(--text-dim);font-size:13px;">Report:</label>
+        <select id="reportSelect"></select>
+      </div>
+      <div class="show-grid" id="showGrid"></div>
+      <div class="empty-note" id="showsEmpty" style="display:none;">No reports yet. Click "Run fresh search" to find this month's shows.</div>
+    </section>
+
+    <!-- ---------- CUSTOMER TRACKER ---------- -->
+    <section class="panel" id="panel-customers">
+      <h2>Customer Tracker</h2>
+      <p class="lede">People you meet at shows who might buy photos.</p>
+
+      <div class="form-card">
+        <div class="field-grid">
+          <div class="field"><label>Name *</label><input id="cName"></div>
+          <div class="field"><label>Instagram</label><input id="cInstagram" placeholder="@handle"></div>
+          <div class="field"><label>Car info</label><input id="cCarInfo" placeholder="e.g. 2019 Mustang GT"></div>
+          <div class="field"><label>Contact (phone/email)</label><input id="cContact"></div>
+          <div class="field"><label>Met at</label><input id="cMetAt" placeholder="Show name / location"></div>
+        </div>
+        <div class="field" style="margin-top:12px;"><label>Notes</label><textarea id="cNotes"></textarea></div>
+        <div class="form-actions"><button class="btn primary" id="addCustomerBtn">Add customer</button></div>
+        <div class="msg" id="customerMsg"></div>
+      </div>
+
+      <div class="row-list" id="customerList"></div>
+      <div class="empty-note" id="customersEmpty" style="display:none;">No customers yet — add the first person you meet at a show.</div>
+    </section>
+
+    <!-- ---------- PRIVATE SHOOT TRACKER ---------- -->
+    <section class="panel" id="panel-shoots">
+      <h2>Private Shoot Tracker</h2>
+      <p class="lede">Inquiries and bookings for private sessions.</p>
+
+      <div class="form-card">
+        <div class="field-grid">
+          <div class="field"><label>Customer name *</label><input id="sCustomerName"></div>
+          <div class="field"><label>Instagram</label><input id="sInstagram"></div>
+          <div class="field"><label>Contact</label><input id="sContact"></div>
+          <div class="field"><label>Vehicle</label><input id="sVehicle"></div>
+          <div class="field"><label>Shoot date</label><input type="date" id="sDate"></div>
+          <div class="field"><label>Location</label><input id="sLocation"></div>
+          <div class="field"><label>Agreed price ($)</label><input type="number" id="sPrice" min="0" step="1"></div>
+          <div class="field"><label>Status</label>
+            <select id="sStatus">
+              <option value="inquiry">Inquiry</option>
+              <option value="booked">Booked</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px;"><label>Notes</label><textarea id="sNotes"></textarea></div>
+        <input type="hidden" id="sLinkedCustomerId">
+        <div class="form-actions">
+          <button class="btn primary" id="addShootBtn">Add shoot</button>
+          <button class="btn outline" id="clearShootFormBtn">Clear</button>
+        </div>
+        <div class="msg" id="shootMsg"></div>
+      </div>
+
+      <div class="subtabs" id="shootSubtabs">
+        <button class="subtab-btn active" data-filter="all">All</button>
+        <button class="subtab-btn" data-filter="inquiry">Inquiries</button>
+        <button class="subtab-btn" data-filter="booked">Booked</button>
+        <button class="subtab-btn" data-filter="completed">Completed</button>
+        <button class="subtab-btn" data-filter="cancelled">Cancelled</button>
+      </div>
+      <div class="row-list" id="shootList"></div>
+      <div class="empty-note" id="shootsEmpty" style="display:none;">No shoots in this view.</div>
+    </section>
+
+    <!-- ---------- BUSINESS STATISTICS ---------- -->
+    <section class="panel" id="panel-stats">
+      <h2>Business Statistics</h2>
+      <p class="lede">Updates automatically from customers and shoots.</p>
+      <div class="cards" id="statTiles"></div>
+      <div class="section-row"><h3>Monthly revenue</h3></div>
+      <div class="trend" id="trendChart"></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var API = '/.netlify/functions/dashboard-api';
+  var KEY_STORAGE = 'nsc_dashboard_key';
+  var data = { customers: [], shoots: [], showReports: [], pending: null, lastRun: null };
+
+  // ---------------- auth / gate ----------------
+  function getKey(){ return sessionStorage.getItem(KEY_STORAGE) || ''; }
+
+  function api(action, extra){
+    extra = extra || {};
+    var body = Object.assign({ action: action }, extra);
+    return fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-dashboard-key': getKey() },
+      body: JSON.stringify(body)
+    }).then(function(r){
+      if (r.status === 401) { sessionStorage.removeItem(KEY_STORAGE); showGate('Dashboard key is incorrect or expired.'); throw new Error('unauthorized'); }
+      return r.json().then(function(j){
+        if (!r.ok) throw new Error(j && j.error || 'Request failed');
+        return j;
+      });
+    });
+  }
+
+  function showGate(msg){
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('gate').style.display = '';
+    document.getElementById('gateMsg').className = 'msg error';
+    document.getElementById('gateMsg').textContent = msg || '';
+  }
+
+  function showApp(){
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = '';
+  }
+
+  function tryUnlock(key, fromStorage){
+    sessionStorage.setItem(KEY_STORAGE, key);
+    api('getAll').then(function(j){
+      data = j;
+      showApp();
+      renderAll();
+    }).catch(function(err){
+      if (!fromStorage) showGate('Could not unlock: ' + err.message);
+    });
+  }
+
+  document.getElementById('unlockBtn').addEventListener('click', function(){
+    var key = document.getElementById('dashKey').value.trim();
+    if (!key) { showGate('Enter your dashboard key.'); return; }
+    tryUnlock(key, false);
+  });
+  document.getElementById('dashKey').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') document.getElementById('unlockBtn').click();
+  });
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    sessionStorage.removeItem(KEY_STORAGE);
+    document.getElementById('dashKey').value = '';
+    showGate('');
+  });
+
+  // ---------------- tabs ----------------
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
+    document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('active', p.id === 'panel-' + btn.dataset.tab); });
+  });
+  function goToTab(name){
+    var btn = document.querySelector('.tab-btn[data-tab="' + name + '"]');
+    if (btn) btn.click();
+  }
+
+  // ---------------- render: shows ----------------
+  function fmtDateTime(iso){
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+    catch(e){ return iso; }
+  }
+
+  function renderShows(){
+    var lastRun = data.lastRun;
+    var note = lastRun
+      ? ('Last successful search: ' + fmtDateTime(lastRun.ranAt) + ' (' + lastRun.showCount + ' shows found, ' + (lastRun.triggeredBy === 'manual' ? 'manual' : 'automatic monthly') + ')')
+      : 'No successful search yet.';
+    if (data.pending) note += ' — a fresh search is queued, usually ready within about an hour.';
+    document.getElementById('lastRunNote').textContent = note;
+
+    var sel = document.getElementById('reportSelect');
+    var reports = data.showReports || [];
+    sel.innerHTML = '';
+    reports.forEach(function(r, i){
+      var opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = r.month + ' — ' + fmtDateTime(r.ranAt) + (r.triggeredBy === 'manual' ? ' (manual)' : '');
+      sel.appendChild(opt);
+    });
+
+    function renderSelected(){
+      var idx = Number(sel.value) || 0;
+      var report = reports[idx];
+      var grid = document.getElementById('showGrid');
+      grid.innerHTML = '';
+      document.getElementById('showsEmpty').style.display = (!report || !report.shows.length) ? '' : 'none';
+      if (!report) return;
+      report.shows.forEach(function(s){
+        var card = document.createElement('div');
+        card.className = 'show-card';
+        var stars = '★'.repeat(s.rating) + '☆'.repeat(5 - s.rating);
+        card.innerHTML =
+          '<div class="name"></div>' +
+          '<div class="meta date-meta"></div>' +
+          '<div class="meta loc-meta"></div>' +
+          '<div class="meta drive-meta"></div>' +
+          '<div class="meta admission-meta"></div>' +
+          '<div class="stars"></div>' +
+          '<div class="notes"></div>';
+        card.querySelector('.name').textContent = s.name || 'Untitled show';
+        card.querySelector('.date-meta').textContent = '📅 ' + (s.date || 'date tbd');
+        card.querySelector('.loc-meta').textContent = '📍 ' + (s.location || '—');
+        card.querySelector('.drive-meta').textContent = '🚗 ' + (s.drivingTime || 'driving time unknown');
+        card.querySelector('.admission-meta').textContent = '🎟 ' + (s.admission || 'admission unknown');
+        card.querySelector('.stars').textContent = stars + ' photography potential';
+        card.querySelector('.notes').textContent = s.notes || '';
+        grid.appendChild(card);
+      });
+    }
+    sel.onchange = renderSelected;
+    renderSelected();
+  }
+
+  document.getElementById('runSearchBtn').addEventListener('click', function(){
+    var btn = this;
+    btn.disabled = true;
+    api('requestShowSearch').then(function(){
+      return api('getAll');
+    }).then(function(j){
+      data = j;
+      renderShows();
+    }).finally(function(){ btn.disabled = false; });
+  });
+
+  // ---------------- render: customers ----------------
+  var FOLLOWUP_OPTIONS = [
+    ['new', 'New'], ['contacted', 'Contacted'], ['waiting', 'Waiting on them'],
+    ['converted', 'Converted'], ['not_interested', 'Not interested']
+  ];
+
+  function refreshAndRender(){ return api('getAll').then(function(j){ data = j; renderAll(); }); }
+
+  function renderCustomers(){
+    var list = document.getElementById('customerList');
+    list.innerHTML = '';
+    var customers = (data.customers || []).slice().sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
+    document.getElementById('customersEmpty').style.display = customers.length ? 'none' : '';
+
+    customers.forEach(function(c){
+      var row = document.createElement('div');
+      row.className = 'item-row';
+
+      var info = document.createElement('div');
+      info.className = 'main-info';
+      var title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = c.name + (c.instagram ? ' · ' + c.instagram : '');
+      var sub = document.createElement('div');
+      sub.className = 'sub';
+      sub.textContent = [c.carInfo, c.metAt, c.contact].filter(Boolean).join(' · ') || 'No details';
+      info.appendChild(title); info.appendChild(sub);
+      if (c.purchase) {
+        var pb = document.createElement('span');
+        pb.className = 'badge good';
+        pb.style.marginTop = '6px'; pb.style.display = 'inline-block';
+        pb.textContent = '$' + c.purchase.amount + ' · ' + c.purchase.photos + ' photos';
+        info.appendChild(document.createElement('br'));
+        info.appendChild(pb);
+      }
+
+      var controls = document.createElement('div');
+      controls.className = 'controls';
+
+      var contactedBtn = document.createElement('button');
+      contactedBtn.className = 'icon-btn';
+      contactedBtn.textContent = c.contacted ? '✓ Contacted' : 'Mark contacted';
+      contactedBtn.onclick = function(){ api('updateCustomer', { id: c.id, patch: { contacted: !c.contacted } }).then(refreshAndRender); };
+
+      var interestedBtn = document.createElement('button');
+      interestedBtn.className = 'icon-btn';
+      interestedBtn.textContent = c.interested ? '✓ Interested' : 'Mark interested';
+      interestedBtn.onclick = function(){ api('updateCustomer', { id: c.id, patch: { interested: !c.interested } }).then(refreshAndRender); };
+
+      var followSel = document.createElement('select');
+      FOLLOWUP_OPTIONS.forEach(function(o){
+        var opt = document.createElement('option');
+        opt.value = o[0]; opt.textContent = o[1];
+        if (c.followUpStatus === o[0]) opt.selected = true;
+        followSel.appendChild(opt);
+      });
+      followSel.onchange = function(){ api('updateCustomer', { id: c.id, patch: { followUpStatus: followSel.value } }).then(refreshAndRender); };
+
+      var purchaseBtn = document.createElement('button');
+      purchaseBtn.className = 'icon-btn';
+      purchaseBtn.textContent = c.purchase ? 'Edit sale' : 'Mark purchased';
+      purchaseBtn.onclick = function(){
+        var amount = prompt('Sale amount ($):', c.purchase ? c.purchase.amount : '');
+        if (amount === null) return;
+        var photos = prompt('Photos sold:', c.purchase ? c.purchase.photos : '');
+        if (photos === null) return;
+        api('updateCustomer', { id: c.id, patch: { purchase: { amount: amount, photos: photos } } }).then(refreshAndRender);
+      };
+
+      var moveBtn = document.createElement('button');
+      moveBtn.className = 'icon-btn';
+      moveBtn.textContent = '→ Private shoot';
+      moveBtn.onclick = function(){
+        document.getElementById('sCustomerName').value = c.name;
+        document.getElementById('sInstagram').value = c.instagram || '';
+        document.getElementById('sContact').value = c.contact || '';
+        document.getElementById('sVehicle').value = c.carInfo || '';
+        document.getElementById('sLinkedCustomerId').value = c.id;
+        goToTab('shoots');
+      };
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'icon-btn';
+      delBtn.textContent = 'Delete';
+      delBtn.onclick = function(){ if (confirm('Delete ' + c.name + '?')) api('deleteCustomer', { id: c.id }).then(refreshAndRender); };
+
+      [contactedBtn, interestedBtn, followSel, purchaseBtn, moveBtn, delBtn].forEach(function(el){ controls.appendChild(el); });
+      row.appendChild(info); row.appendChild(controls);
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById('addCustomerBtn').addEventListener('click', function(){
+    var name = document.getElementById('cName').value.trim();
+    var msg = document.getElementById('customerMsg');
+    if (!name) { msg.className = 'msg error'; msg.textContent = 'Name is required.'; return; }
+    api('addCustomer', { customer: {
+      name: name,
+      instagram: document.getElementById('cInstagram').value,
+      carInfo: document.getElementById('cCarInfo').value,
+      contact: document.getElementById('cContact').value,
+      metAt: document.getElementById('cMetAt').value,
+      notes: document.getElementById('cNotes').value
+    }}).then(function(){
+      ['cName','cInstagram','cCarInfo','cContact','cMetAt','cNotes'].forEach(function(id){ document.getElementById(id).value = ''; });
+      msg.className = 'msg ok'; msg.textContent = 'Added.';
+      return refreshAndRender();
+    }).catch(function(err){ msg.className = 'msg error'; msg.textContent = err.message; });
+  });
+
+  // ---------------- render: shoots ----------------
+  var shootFilter = 'all';
+  document.getElementById('shootSubtabs').addEventListener('click', function(e){
+    var btn = e.target.closest('.subtab-btn');
+    if (!btn) return;
+    shootFilter = btn.dataset.filter;
+    document.querySelectorAll('.subtab-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
+    renderShoots();
+  });
+
+  function statusBadgeClass(status){
+    if (status === 'completed') return 'good';
+    if (status === 'booked') return 'warn';
+    if (status === 'cancelled') return 'bad';
+    return 'neutral';
+  }
+
+  function renderShoots(){
+    var list = document.getElementById('shootList');
+    list.innerHTML = '';
+    var shoots = (data.shoots || []).slice().sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
+    if (shootFilter !== 'all') shoots = shoots.filter(function(s){ return s.status === shootFilter; });
+    document.getElementById('shootsEmpty').style.display = shoots.length ? 'none' : '';
+
+    shoots.forEach(function(s){
+      var row = document.createElement('div');
+      row.className = 'item-row';
+
+      var info = document.createElement('div');
+      info.className = 'main-info';
+      var title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = s.customerName + (s.vehicle ? ' · ' + s.vehicle : '');
+      var sub = document.createElement('div');
+      sub.className = 'sub';
+      sub.textContent = [s.shootDate, s.location, '$' + (s.price || 0)].filter(Boolean).join(' · ');
+      info.appendChild(title); info.appendChild(sub);
+
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + statusBadgeClass(s.status);
+      badge.style.marginTop = '6px'; badge.style.display = 'inline-block';
+      badge.textContent = s.status;
+      info.appendChild(document.createElement('br'));
+      info.appendChild(badge);
+
+      var controls = document.createElement('div');
+      controls.className = 'controls';
+
+      var statusSel = document.createElement('select');
+      ['inquiry','booked','completed','cancelled'].forEach(function(st){
+        var opt = document.createElement('option');
+        opt.value = st; opt.textContent = st.charAt(0).toUpperCase() + st.slice(1);
+        if (s.status === st) opt.selected = true;
+        statusSel.appendChild(opt);
+      });
+      statusSel.onchange = function(){ api('updateShoot', { id: s.id, patch: { status: statusSel.value } }).then(refreshAndRender); };
+
+      var paySel = document.createElement('select');
+      ['unpaid','deposit','paid'].forEach(function(p){
+        var opt = document.createElement('option');
+        opt.value = p; opt.textContent = p.charAt(0).toUpperCase() + p.slice(1);
+        if (s.paymentStatus === p) opt.selected = true;
+        paySel.appendChild(opt);
+      });
+      paySel.onchange = function(){ api('updateShoot', { id: s.id, patch: { paymentStatus: paySel.value } }).then(refreshAndRender); };
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'icon-btn';
+      delBtn.textContent = 'Delete';
+      delBtn.onclick = function(){ if (confirm('Delete this shoot?')) api('deleteShoot', { id: s.id }).then(refreshAndRender); };
+
+      [statusSel, paySel, delBtn].forEach(function(el){ controls.appendChild(el); });
+      row.appendChild(info); row.appendChild(controls);
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById('addShootBtn').addEventListener('click', function(){
+    var name = document.getElementById('sCustomerName').value.trim();
+    var msg = document.getElementById('shootMsg');
+    if (!name) { msg.className = 'msg error'; msg.textContent = 'Customer name is required.'; return; }
+    api('addShoot', { shoot: {
+      customerName: name,
+      instagram: document.getElementById('sInstagram').value,
+      contact: document.getElementById('sContact').value,
+      vehicle: document.getElementById('sVehicle').value,
+      shootDate: document.getElementById('sDate').value,
+      location: document.getElementById('sLocation').value,
+      price: document.getElementById('sPrice').value,
+      status: document.getElementById('sStatus').value,
+      notes: document.getElementById('sNotes').value,
+      linkedCustomerId: document.getElementById('sLinkedCustomerId').value || null
+    }}).then(function(){
+      document.getElementById('clearShootFormBtn').click();
+      msg.className = 'msg ok'; msg.textContent = 'Added.';
+      return refreshAndRender();
+    }).catch(function(err){ msg.className = 'msg error'; msg.textContent = err.message; });
+  });
+  document.getElementById('clearShootFormBtn').addEventListener('click', function(){
+    ['sCustomerName','sInstagram','sContact','sVehicle','sDate','sLocation','sPrice','sNotes','sLinkedCustomerId'].forEach(function(id){ document.getElementById(id).value = ''; });
+    document.getElementById('sStatus').value = 'inquiry';
+  });
+
+  // ---------------- render: stats ----------------
+  function monthKeyOf(iso){
+    if (!iso) return null;
+    var d = new Date(iso);
+    if (isNaN(d)) return null;
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  }
+
+  function renderStats(){
+    var customers = data.customers || [];
+    var shoots = data.shoots || [];
+
+    var totalRevenue = 0, photosSold = 0;
+    customers.forEach(function(c){ if (c.purchase) { totalRevenue += Number(c.purchase.amount)||0; photosSold += Number(c.purchase.photos)||0; } });
+    var shootsCompleted = 0, upcomingBookings = 0;
+    var today = new Date().toISOString().slice(0,10);
+    var monthly = {};
+    shoots.forEach(function(s){
+      if (s.status === 'completed') { shootsCompleted++; totalRevenue += Number(s.price)||0; }
+      if (s.status === 'booked' && s.shootDate && s.shootDate >= today) upcomingBookings++;
+    });
+
+    customers.forEach(function(c){ if (c.purchase) { var mk = monthKeyOf(c.purchase.date); if (mk) monthly[mk] = (monthly[mk]||0) + (Number(c.purchase.amount)||0); } });
+    shoots.forEach(function(s){ if (s.status === 'completed') { var mk = monthKeyOf(s.shootDate) || monthKeyOf(s.updatedAt); if (mk) monthly[mk] = (monthly[mk]||0) + (Number(s.price)||0); } });
+
+    var tiles = [
+      ['$' + totalRevenue.toLocaleString(), 'Total revenue'],
+      [customers.length, 'Customers'],
+      [photosSold, 'Photos sold'],
+      [shootsCompleted, 'Private shoots completed'],
+      [upcomingBookings, 'Upcoming bookings']
+    ];
+    var tilesEl = document.getElementById('statTiles');
+    tilesEl.innerHTML = '';
+    tiles.forEach(function(t){
+      var div = document.createElement('div');
+      div.className = 'stat-tile';
+      div.innerHTML = '<div class="num"></div><div class="label"></div>';
+      div.querySelector('.num').textContent = t[0];
+      div.querySelector('.label').textContent = t[1];
+      tilesEl.appendChild(div);
+    });
+
+    var months = Object.keys(monthly).sort().slice(-6);
+    var max = Math.max.apply(null, months.map(function(m){ return monthly[m]; }).concat([1]));
+    var trendEl = document.getElementById('trendChart');
+    trendEl.innerHTML = '';
+    if (!months.length) {
+      trendEl.innerHTML = '<div class="empty-note">No completed sales or shoots yet.</div>';
+    }
+    months.forEach(function(m){
+      var row = document.createElement('div');
+      row.className = 'trend-row';
+      row.innerHTML = '<div class="m"></div><div class="bar-track"><div class="bar-fill"></div></div><div class="v"></div>';
+      row.querySelector('.m').textContent = m;
+      row.querySelector('.bar-fill').style.width = Math.round((monthly[m]/max)*100) + '%';
+      row.querySelector('.v').textContent = '$' + monthly[m].toLocaleString();
+      trendEl.appendChild(row);
+    });
+  }
+
+  function renderAll(){
+    renderShows();
+    renderCustomers();
+    renderShoots();
+    renderStats();
+  }
+
+  // ---------------- boot ----------------
+  var saved = getKey();
+  if (saved) tryUnlock(saved, true);
+})();
+</script>
+</body>
+</html>
