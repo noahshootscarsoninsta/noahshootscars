@@ -194,10 +194,10 @@ color:var(--accent);font-size:30px;font-weight:800;
 .confirm-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:32px;}
 
 /* PORTFOLIO MASONRY */
-.masonry{column-count:3;column-gap:16px;margin-top:26px;}
-@media(max-width:900px){.masonry{column-count:2;}}
-@media(max-width:560px){.masonry{column-count:1;}}
-.tile{break-inside:avoid;margin-bottom:16px;border-radius:var(--radius);overflow:hidden;cursor:zoom-in;}
+.masonry{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px;}
+@media(max-width:900px){.masonry{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:560px){.masonry{grid-template-columns:1fr;}}
+.tile{border-radius:var(--radius);overflow:hidden;cursor:zoom-in;}
 .tile .ph, .tile.photo-tile{border-radius:var(--radius);width:100%;}
 .tile img{width:100%;display:block;}
 
