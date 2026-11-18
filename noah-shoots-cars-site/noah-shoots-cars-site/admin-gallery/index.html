@@ -55,15 +55,7 @@
   <h1>Private Client Galleries</h1>
   <p style="color:var(--text-dim);">Not linked anywhere on the public site. This page and the functions behind it are the only way galleries get created or changed — nothing here touches the public GitHub repo, so client access codes are never exposed in git or in front-end JavaScript.</p>
 
-  <div class="card" id="keyCard">
-    <label for="adminKey">Admin key</label>
-    <input type="password" id="adminKey" placeholder="Paste the GALLERY_ADMIN_KEY value">
-    <div class="hint">Set once in your browser for this session. This is the same value you put in Netlify's Environment variables as <code>GALLERY_ADMIN_KEY</code>. It is only ever sent to your own functions and is never written to any file.</div>
-    <div style="margin-top:14px;"><button class="primary" id="unlockBtn">Unlock</button></div>
-    <div class="msg" id="keyMsg"></div>
-  </div>
-
-  <div id="app" style="display:none;">
+  <div id="app">
     <div class="card">
       <h2 style="margin-top:0;font-size:18px;">New gallery</h2>
       <div class="row">
@@ -107,8 +99,6 @@
 </div>
 
 <script>
-let ADMIN_KEY = '';
-
 // Canonical package list -- also enforced server-side, this copy is just
 // for building the dropdowns and showing friendly labels.
 const PACKAGES = [
@@ -145,7 +135,7 @@ function setMsg(id, text, ok){
 async function api(action, payload){
   const res = await fetch('/.netlify/functions/gallery-admin', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign({ action }, payload || {}))
   });
   const data = await res.json().catch(() => ({}));
@@ -400,20 +390,6 @@ async function loadGalleries(){
   }
 }
 
-el('unlockBtn').onclick = async () => {
-  ADMIN_KEY = el('adminKey').value.trim();
-  if (!ADMIN_KEY) { setMsg('keyMsg', 'Enter the admin key first.'); return; }
-  try {
-    await api('list', {});
-    sessionStorage.setItem('gallery_admin_key', ADMIN_KEY);
-    el('keyCard').style.display = 'none';
-    el('app').style.display = 'block';
-    loadGalleries();
-  } catch (e) {
-    setMsg('keyMsg', 'Wrong key, or GALLERY_ADMIN_KEY is not set in Netlify yet.');
-  }
-};
-
 el('createBtn').onclick = async () => {
   const clientName = el('newClientName').value.trim();
   const code = el('newCode').value.trim();
@@ -460,11 +436,7 @@ el('newPackage').addEventListener('change', () => {
   el('newPayment').value = paymentTemplate(pkg);
 });
 
-// Restore a previously-entered key for this browser tab session only.
-const savedKey = sessionStorage.getItem('gallery_admin_key');
-if (savedKey) {
-  el('adminKey').value = savedKey;
-}
+loadGalleries();
 </script>
 </body>
 </html>
