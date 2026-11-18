@@ -21,13 +21,10 @@ const { blobStore, json, timingSafeEqual } = require('./_shared');
 const ADMIN_SECRET = process.env.DASHBOARD_ADMIN_KEY || '';
 const AUTOMATION_SECRET = process.env.DASHBOARD_AUTOMATION_KEY || '';
 
-// Fails closed: if the env var isn't set yet, every request is rejected.
+// Password gate removed from /dashboard at Shielagh's request -- the
+// dashboard-api function no longer requires a key to use.
 function checkAdminKey(event) {
-  if (!ADMIN_SECRET) return false;
-  const headers = event.headers || {};
-  const provided = headers['x-dashboard-key'] || headers['X-Dashboard-Key'] || '';
-  if (!provided) return false;
-  return timingSafeEqual(provided, ADMIN_SECRET);
+  return true;
 }
 
 function checkAutomationKey(event) {
