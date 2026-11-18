@@ -9,27 +9,13 @@
 </head>
 <body>
 
-<!-- ============ LOGIN GATE ============ -->
-<div class="gate-wrap" id="gate">
-  <h1>Business Dashboard</h1>
-  <p>Not linked anywhere on the public site. Private to you.</p>
-  <div class="gate-card">
-    <div class="field"><label for="dashKey">Dashboard key</label>
-      <input type="password" id="dashKey" placeholder="Enter your dashboard key" autocomplete="off">
-    </div>
-    <div class="form-actions"><button class="btn primary" id="unlockBtn">Unlock</button></div>
-    <div class="msg" id="gateMsg"></div>
-  </div>
-</div>
-
 <!-- ============ APP SHELL ============ -->
-<div id="app" style="display:none;">
+<div id="app">
   <header class="dash-header">
     <div>
       <div class="brand">NOAH SHOOTS <span>CARS</span></div>
       <div class="sub">Business Dashboard</div>
     </div>
-    <button class="logout-btn" id="logoutBtn">Lock dashboard</button>
   </header>
 
   <nav class="tabs" id="tabs">
@@ -157,64 +143,22 @@
 (function(){
   "use strict";
   var API = '/.netlify/functions/dashboard-api';
-  var KEY_STORAGE = 'nsc_dashboard_key';
   var data = { customers: [], shoots: [], showReports: [], pending: null, lastRun: null, settings: {} };
-
-  // ---------------- auth / gate ----------------
-  function getKey(){ return sessionStorage.getItem(KEY_STORAGE) || ''; }
 
   function api(action, extra){
     extra = extra || {};
     var body = Object.assign({ action: action }, extra);
     return fetch(API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-dashboard-key': getKey() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     }).then(function(r){
-      if (r.status === 401) { sessionStorage.removeItem(KEY_STORAGE); showGate('Dashboard key is incorrect or expired.'); throw new Error('unauthorized'); }
       return r.json().then(function(j){
         if (!r.ok) throw new Error(j && j.error || 'Request failed');
         return j;
       });
     });
   }
-
-  function showGate(msg){
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('gate').style.display = '';
-    document.getElementById('gateMsg').className = 'msg error';
-    document.getElementById('gateMsg').textContent = msg || '';
-  }
-
-  function showApp(){
-    document.getElementById('gate').style.display = 'none';
-    document.getElementById('app').style.display = '';
-  }
-
-  function tryUnlock(key, fromStorage){
-    sessionStorage.setItem(KEY_STORAGE, key);
-    api('getAll').then(function(j){
-      data = j;
-      showApp();
-      renderAll();
-    }).catch(function(err){
-      if (!fromStorage) showGate('Could not unlock: ' + err.message);
-    });
-  }
-
-  document.getElementById('unlockBtn').addEventListener('click', function(){
-    var key = document.getElementById('dashKey').value.trim();
-    if (!key) { showGate('Enter your dashboard key.'); return; }
-    tryUnlock(key, false);
-  });
-  document.getElementById('dashKey').addEventListener('keydown', function(e){
-    if (e.key === 'Enter') document.getElementById('unlockBtn').click();
-  });
-  document.getElementById('logoutBtn').addEventListener('click', function(){
-    sessionStorage.removeItem(KEY_STORAGE);
-    document.getElementById('dashKey').value = '';
-    showGate('');
-  });
 
   // ---------------- tabs ----------------
   document.getElementById('tabs').addEventListener('click', function(e){
@@ -624,8 +568,12 @@
   }
 
   // ---------------- boot ----------------
-  var saved = getKey();
-  if (saved) tryUnlock(saved, true);
+  api('getAll').then(function(j){
+    data = j;
+    renderAll();
+  }).catch(function(err){
+    console.error('Failed to load dashboard data:', err);
+  });
 })();
 </script>
 </body>
