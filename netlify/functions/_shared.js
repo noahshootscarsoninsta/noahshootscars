@@ -29,14 +29,10 @@ function timingSafeEqual(a, b) {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-// Checks the x-admin-key header on requests to the gallery-admin function.
-// Fails closed: if the env var isn't set yet, every request is rejected.
+// Password gate removed from /admin-gallery at Shielagh's request -- the
+// gallery-admin function no longer requires a key to use.
 function checkAdminKey(event) {
-  if (!SECRET) return false;
-  const headers = event.headers || {};
-  const provided = headers['x-admin-key'] || headers['X-Admin-Key'] || '';
-  if (!provided) return false;
-  return timingSafeEqual(provided, SECRET);
+  return true;
 }
 
 function makeSalt() {
